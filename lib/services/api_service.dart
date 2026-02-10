@@ -1,190 +1,276 @@
 import 'package:dio/dio.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import '../utils/constants.dart';
+import '../config/api_config.dart';
+import 'token_manager.dart';
 
 class ApiService {
-  late Dio _dio;
-  
+  late final Dio _dio;
+
   ApiService() {
     _dio = Dio(BaseOptions(
-      baseUrl: AppConstants.baseUrl,
-      connectTimeout: Duration(seconds: 30),
-      receiveTimeout: Duration(seconds: 30),
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      baseUrl: ApiConfig.baseUrl,
+      connectTimeout: ApiConfig.connectTimeout,
+      receiveTimeout: ApiConfig.receiveTimeout,
     ));
-    
-    // Interceptor for JWT Token
-    _dio.interceptors.add(InterceptorsWrapper(
-      onRequest: (options, handler) async {
-        final prefs = await SharedPreferences.getInstance();
-        final token = prefs.getString('access_token');
-        
-        if (token != null) {
-          options.headers['Authorization'] = 'Bearer $token';
-        }
-        
-        return handler.next(options);
-      },
-      onError: (error, handler) {
-        print('API Error: ${error.message}');
-        return handler.next(error);
-      },
-    ));
-  }
-  
-  // Login API
-  Future<Map<String, dynamic>> login(String email, String password) async {
-    try {
-      final response = await _dio.post(
-        AppConstants.loginEndpoint,
-        data: {
-          'emailOrPhone': email,
-          'password': password,
+
+    _dio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) async {
+          final token = await TokenManager.getStoredToken();
+          
+          if (token != null) {
+            options.headers['Authorization'] = 'Bearer $token';
+            if (ApiConfig.isDebugMode) {
+              print(' Token added to: ${options.path}');
+            }
+          }
+          
+          if (ApiConfig.isDebugMode) {
+            print('Request: ${options.method} ${options.baseUrl}${options.path}');
+          }
+          
+          return handler.next(options);
         },
-      );
-      
-      if (response.data != null && response.data['accessToken'] != null) {
-        final token = response.data['accessToken'];
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('access_token', token);
-        await prefs.setInt('user_id', response.data['userId']);
-        await prefs.setString('email', response.data['email']);
-        await prefs.setString('phone', response.data['phone'] ?? '');
-        
-        return {
-          'success': true,
-          'data': response.data,
-        };
-      }
-      
-      return {
-        'success': false,
-        'message': 'Login failed',
-      };
-    } catch (e) {
-      throw Exception('Login failed: $e');
+        onResponse: (response, handler) {
+          if (ApiConfig.isDebugMode) {
+            print(' Response: ${response.statusCode} from ${response.requestOptions.path}');
+          }
+          return handler.next(response);
+        },
+        onError: (error, handler) async {
+          if (ApiConfig.isDebugMode) {
+            print('   API Error: ${error.message}');
+            print('   Status Code: ${error.response?.statusCode}');
+            print('   URL: ${error.requestOptions.baseUrl}${error.requestOptions.path}');
+          }
+          
+          if (error.response?.statusCode == 401) {
+            print('Unauthorized - Clearing auth data');
+            await TokenManager.clearAuthData();
+          }
+          
+          return handler.next(error);
+        },
+      ),
+    );
+    
+    if (ApiConfig.isDebugMode) {
+      print('════════════════════════════════════════');
+      print('   ApiService Initialized');
+      print('   Base URL: ${ApiConfig.baseUrl}');
+      print('   Connect Timeout: ${ApiConfig.connectTimeout.inSeconds}s');
+      print('   Receive Timeout: ${ApiConfig.receiveTimeout.inSeconds}s');
+      print('════════════════════════════════════════');
     }
   }
-  
-  // Register API
+
+  // Extract error message helper
+  String _extractErrorMessage(dynamic error, String defaultMessage) {
+    if (error is DioException) {
+      // Log detailed error for debugging
+      if (ApiConfig.isDebugMode) {
+        print('   Error Details:');
+        print('   Type: ${error.type}');
+        print('   Message: ${error.message}');
+        print('   Status: ${error.response?.statusCode}');
+      }
+
+      // Check backend response
+      if (error.response?.data != null) {
+        final data = error.response!.data;
+        
+        // JSON response with message
+        if (data is Map<String, dynamic> && data['message'] != null) {
+          return data['message'].toString();
+        }
+        
+        // Plain string response
+        if (data is String) {
+          return data;
+        }
+      }
+      
+      // Network errors with better messages
+      if (error.type == DioExceptionType.connectionTimeout) {
+        return 'Connection timeout. Check if backend is running on ${ApiConfig.baseUrl}';
+      }
+      if (error.type == DioExceptionType.receiveTimeout) {
+        return 'Server not responding. Please try again later.';
+      }
+      if (error.type == DioExceptionType.connectionError) {
+        return 'Cannot connect to ${ApiConfig.baseUrl}. Check your network and backend server.';
+      }
+      
+      // Status code errors
+      if (error.response?.statusCode != null) {
+        final statusCode = error.response!.statusCode!;
+        
+        if (statusCode >= 500) {
+          return 'Server error. Please try again later.';
+        }
+        if (statusCode == 404) {
+          return 'Resource not found.';
+        }
+        if (statusCode == 403) {
+          return 'Access denied.';
+        }
+        if (statusCode == 401) {
+          return 'Session expired. Please login again.';
+        }
+      }
+    }
+    
+    return defaultMessage;
+  }
+
+  // Get Restaurants
+  Future<List<dynamic>> getRestaurants() async {
+    try {
+      print('Fetching restaurants...');
+      final response = await _dio.get('/api/restaurants');
+      print('Restaurants fetched: ${response.data.length}');
+      return response.data;
+    } on DioException catch (e) {
+      print('Failed to fetch restaurants: ${e.message}');
+      throw Exception(_extractErrorMessage(
+        e,
+        'Failed to load restaurants. Please try again.',
+      ));
+    }
+  }
+
+  Future<List<dynamic>> getAllRestaurants() async {
+    return await getRestaurants();
+  }
+
+  // Get Restaurant by ID
+  Future<Map<String, dynamic>> getRestaurantById(int id) async {
+    try {
+      print('Fetching restaurant: $id');
+      final response = await _dio.get('/api/restaurants/$id');
+      return response.data;
+    } catch (e) {
+      print('Failed to fetch restaurant: $e');
+      throw Exception(_extractErrorMessage(
+        e,
+        'Failed to load restaurant details.',
+      ));
+    }
+  }
+
+  // Get Menu Items
+  Future<List<dynamic>> getMenuItems(int restaurantId) async {
+    try {
+      print('Fetching menu for restaurant $restaurantId...');
+      final response = await _dio.get('/api/menu/restaurant/$restaurantId/available');
+      print('Menu items fetched: ${response.data.length}');
+      return response.data;
+    } on DioException catch (e) {
+      print('Failed to fetch menu: ${e.message}');
+      throw Exception(_extractErrorMessage(
+        e,
+        'Failed to load menu. Please try again.',
+      ));
+    }
+  }
+
+  // Search Restaurants
+  Future<List<dynamic>> searchRestaurants(String query) async {
+    try {
+      print('🔍 Searching restaurants: $query');
+      final response = await _dio.get(
+        '/api/restaurants/search',
+        queryParameters: {'query': query},
+      );
+      return response.data;
+    } catch (e) {
+      print('Search failed: $e');
+      throw Exception(_extractErrorMessage(
+        e,
+        'Failed to search restaurants.',
+      ));
+    }
+  }
+
+  // Get Restaurants by Cuisine
+  Future<List<dynamic>> getRestaurantsByCuisine(String cuisine) async {
+    try {
+      print('Fetching restaurants by cuisine: $cuisine');
+      final response = await _dio.get('/api/restaurants/cuisine/$cuisine');
+      return response.data;
+    } catch (e) {
+      print('Failed to fetch by cuisine: $e');
+      throw Exception(_extractErrorMessage(
+        e,
+        'Failed to load restaurants.',
+      ));
+    }
+  }
+
+  // Register User
   Future<Map<String, dynamic>> register(
-    String username,
+    String name,
     String email,
-    String password,
     String phone,
+    String password,
   ) async {
     try {
+      print('Register attempt: $email');
+
       final response = await _dio.post(
-        AppConstants.registerEndpoint,
+        '/api/auth/register',
         data: {
+          'username': name,  // Backend expects 'username'
           'email': email,
           'password': password,
           'phone': phone,
           'role': 'CUSTOMER',
         },
       );
-      
-      return response.data;
-    } catch (e) {
-      throw Exception('Registration failed: $e');
+
+      print('Registration successful');
+
+      if (response.data != null && response.data['accessToken'] != null) {
+        final token = response.data['accessToken'];
+        final userId = response.data['userId'];
+
+        await TokenManager.saveAuthData(
+          token: token,
+          userId: userId,
+          userName: name,
+          userEmail: email,
+          userPhone: phone,
+        );
+
+        return response.data;
+      } else if (response.data['success'] == true) {
+        final data = response.data['data'];
+        final token = data['token'];
+        final user = data['user'];
+
+        await TokenManager.saveAuthData(
+          token: token,
+          userId: user['id'],
+          userName: user['username'] ?? user['name'],
+          userEmail: user['email'],
+          userPhone: user['phone'],
+        );
+
+        return response.data;
+      } else {
+        throw Exception('Invalid registration response format');
+      }
+    } on DioException catch (e) {
+      print('Registration error: ${e.message}');
+      throw Exception(_extractErrorMessage(
+        e,
+        'Registration failed. Please try again.',
+      ));
     }
   }
-  
-  // Get All Restaurants
-  Future<List<dynamic>> getAllRestaurants() async {
-    try {
-      final response = await _dio.get('/api/restaurants');
-      return response.data;
-    } catch (e) {
-      throw Exception('Failed to fetch restaurants: $e');
-    }
-  }
-  
-  // Search Restaurants by City
-  Future<List<dynamic>> getRestaurantsByCity(String city) async {
-    try {
-      final response = await _dio.get('/api/restaurants/city/$city');
-      return response.data;
-    } catch (e) {
-      throw Exception('Failed to fetch restaurants: $e');
-    }
-  }
-  
-  // Search by Cuisine
-  Future<List<dynamic>> searchRestaurants(String cuisine) async {
-    try {
-      final response = await _dio.get('/api/restaurants/search?cuisine=$cuisine');
-      return response.data;
-    } catch (e) {
-      throw Exception('Failed to search restaurants: $e');
-    }
-  }
-  
-  // Create Order API
-  Future<Map<String, dynamic>> createOrder(Map<String, dynamic> orderData) async {
-    try {
-      final response = await _dio.post(
-        AppConstants.ordersEndpoint,
-        data: orderData,
-      );
-      
-      return response.data;
-    } catch (e) {
-      throw Exception('Order creation failed: $e');
-    }
-  }
-  
-  // Get User Orders
-  Future<List<dynamic>> getUserOrders(int userId) async {
-    try {
-      final response = await _dio.get('${AppConstants.ordersEndpoint}/user/$userId');
-      return response.data['data'];
-    } catch (e) {
-      throw Exception('Failed to fetch orders: $e');
-    }
-  }
-  
-  // Get Order Details
-  Future<Map<String, dynamic>> getOrderDetails(int orderId) async {
-    try {
-      final response = await _dio.get('${AppConstants.ordersEndpoint}/$orderId');
-      return response.data['data'];
-    } catch (e) {
-      throw Exception('Failed to fetch order details: $e');
-    }
-  }
-  
-  // Verify Payment
-  Future<Map<String, dynamic>> verifyPayment(Map<String, dynamic> paymentData) async {
-    try {
-      final response = await _dio.post(
-        '${AppConstants.paymentsEndpoint}/verify',
-        data: paymentData,
-      );
-      
-      return response.data;
-    } catch (e) {
-      throw Exception('Payment verification failed: $e');
-    }
-  }
-  
+
   // Logout
   Future<void> logout() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.clear();
+    await TokenManager.clearAuthData();
+    print('Logged out successfully');
   }
-
-   // Get Menu Items by Restaurant
-Future<List<dynamic>> getMenuItems(int restaurantId) async {
-  try {
-    final response = await _dio.get('/api/menu/restaurant/$restaurantId/available');
-    return response.data;
-  } catch (e) {
-    throw Exception('Failed to fetch menu items: $e');
-  }
-}
-
-
 }

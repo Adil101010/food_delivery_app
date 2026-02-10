@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../config/app_theme.dart';
 import '../../models/restaurant_model.dart';
 import '../../models/menu_item_model.dart';
 import '../../services/api_service.dart';
@@ -48,7 +49,8 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Failed to load menu: ${e.toString()}'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppTheme.error,
+            behavior: SnackBarBehavior.floating,
           ),
         );
       }
@@ -73,16 +75,17 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: AppTheme.background,
       body: CustomScrollView(
         slivers: [
-          // App Bar with Cart Icon
+          // App Bar
           SliverAppBar(
             expandedHeight: 200,
             pinned: true,
-            backgroundColor: Colors.blue[700],
+            backgroundColor: Colors.white,
+            foregroundColor: AppTheme.textPrimary,
+            elevation: 0,
             actions: [
-              // Cart Icon with Badge
               Consumer<CartProvider>(
                 builder: (context, cartProvider, child) {
                   final itemCount = cartProvider.totalItems;
@@ -91,27 +94,26 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen> {
                     alignment: Alignment.center,
                     children: [
                       IconButton(
-                        icon: const Icon(Icons.shopping_cart),
-                       onPressed: () {
-  if (cartProvider.hasCart) {
-    // Navigate to cart screen
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const CartScreen(),
-      ),
-    );
-  } else {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Cart is empty'),
-        duration: Duration(seconds: 1),
-        backgroundColor: Colors.orange,
-      ),
-    );
-  }
-},
-
+                        icon: const Icon(Icons.shopping_cart_outlined),
+                        onPressed: () {
+                          if (cartProvider.hasCart) {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const CartScreen(),
+                              ),
+                            );
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: const Text('Cart is empty'),
+                                duration: const Duration(seconds: 1),
+                                backgroundColor: AppTheme.textSecondary,
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          }
+                        },
                       ),
                       if (itemCount > 0)
                         Positioned(
@@ -119,19 +121,19 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen> {
                           top: 8,
                           child: Container(
                             padding: const EdgeInsets.all(4),
-                            decoration: const BoxDecoration(
-                              color: Colors.red,
+                            decoration: BoxDecoration(
+                              color: AppTheme.primary,
                               shape: BoxShape.circle,
                             ),
                             constraints: const BoxConstraints(
-                              minWidth: 20,
-                              minHeight: 20,
+                              minWidth: 18,
+                              minHeight: 18,
                             ),
                             child: Text(
                               '$itemCount',
                               style: const TextStyle(
                                 color: Colors.white,
-                                fontSize: 12,
+                                fontSize: 10,
                                 fontWeight: FontWeight.bold,
                               ),
                               textAlign: TextAlign.center,
@@ -144,19 +146,14 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen> {
               ),
             ],
             flexibleSpace: FlexibleSpaceBar(
-              title: Text(
-                widget.restaurant.name,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
               background: Container(
-                color: Colors.blue[300],
+                decoration: BoxDecoration(
+                  color: AppTheme.surface,
+                ),
                 child: Icon(
-                  Icons.restaurant_menu,
-                  size: 80,
-                  color: Colors.white.withOpacity(0.3),
+                  Icons.restaurant_rounded,
+                  size: 100,
+                  color: AppTheme.primary.withOpacity(0.2),
                 ),
               ),
             ),
@@ -166,93 +163,108 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen> {
           SliverToBoxAdapter(
             child: Container(
               color: Colors.white,
-              padding: EdgeInsets.all(16),
+              padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Restaurant Name
+                  Text(
+                    widget.restaurant.name,
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.textPrimary,
+                    ),
+                  ),
+                  
+                  const SizedBox(height: 4),
+                  
                   // Cuisine
                   Text(
                     widget.restaurant.cuisine,
                     style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.grey[600],
+                      fontSize: 15,
+                      color: AppTheme.textSecondary,
                     ),
                   ),
-                  SizedBox(height: 12),
+                  
+                  const SizedBox(height: 12),
 
-                  // Rating, Time, Fee
+                  // Rating, Time, Delivery
                   Row(
                     children: [
                       // Rating
                       Container(
-                        padding: EdgeInsets.symmetric(
+                        padding: const EdgeInsets.symmetric(
                           horizontal: 8,
                           vertical: 4,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.green,
-                          borderRadius: BorderRadius.circular(6),
+                          color: AppTheme.rating,
+                          borderRadius: BorderRadius.circular(8),
                         ),
                         child: Row(
                           children: [
+                            const Icon(Icons.star, color: Colors.white, size: 14),
+                            const SizedBox(width: 4),
                             Text(
                               widget.restaurant.rating.toStringAsFixed(1),
-                              style: TextStyle(
+                              style: const TextStyle(
                                 color: Colors.white,
-                                fontWeight: FontWeight.bold,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13,
                               ),
                             ),
-                            SizedBox(width: 2),
-                            Icon(Icons.star, color: Colors.white, size: 14),
                           ],
                         ),
                       ),
 
-                      SizedBox(width: 16),
+                      const SizedBox(width: 16),
 
                       // Delivery Time
                       if (widget.restaurant.avgDeliveryTime != null)
                         Row(
                           children: [
-                            Icon(Icons.access_time, size: 18, color: Colors.grey[600]),
-                            SizedBox(width: 4),
+                            Icon(Icons.access_time, size: 16, color: AppTheme.textSecondary),
+                            const SizedBox(width: 4),
                             Text(
                               '${widget.restaurant.avgDeliveryTime} mins',
-                              style: TextStyle(color: Colors.grey[600]),
+                              style: TextStyle(
+                                color: AppTheme.textSecondary,
+                                fontSize: 13,
+                              ),
                             ),
                           ],
                         ),
 
-                      SizedBox(width: 16),
+                      const SizedBox(width: 16),
 
                       // Delivery Fee
                       if (widget.restaurant.deliveryFee != null)
-                        Row(
-                          children: [
-                            Icon(Icons.delivery_dining, size: 18, color: Colors.grey[600]),
-                            SizedBox(width: 4),
-                            Text(
-                              '₹${widget.restaurant.deliveryFee!.toStringAsFixed(0)}',
-                              style: TextStyle(color: Colors.grey[600]),
-                            ),
-                          ],
+                        Text(
+                          'Rs ${widget.restaurant.deliveryFee!.toStringAsFixed(0)} delivery',
+                          style: TextStyle(
+                            color: AppTheme.textSecondary,
+                            fontSize: 13,
+                          ),
                         ),
                     ],
                   ),
 
-                  SizedBox(height: 12),
+                  const SizedBox(height: 12),
 
                   // Address
                   Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(Icons.location_on, size: 18, color: Colors.grey[600]),
-                      SizedBox(width: 4),
+                      Icon(Icons.location_on_outlined, size: 16, color: AppTheme.textSecondary),
+                      const SizedBox(width: 4),
                       Expanded(
                         child: Text(
                           widget.restaurant.address,
                           style: TextStyle(
-                            color: Colors.grey[600],
-                            fontSize: 14,
+                            color: AppTheme.textSecondary,
+                            fontSize: 13,
                           ),
                         ),
                       ),
@@ -263,46 +275,65 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen> {
             ),
           ),
 
+          // Divider
+          SliverToBoxAdapter(
+            child: Container(
+              height: 8,
+              color: AppTheme.surface,
+            ),
+          ),
+
           // Category Filter
           SliverToBoxAdapter(
             child: Container(
-              height: 50,
-              margin: EdgeInsets.symmetric(vertical: 8),
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                padding: EdgeInsets.symmetric(horizontal: 16),
-                itemCount: _categories.length,
-                itemBuilder: (context, index) {
-                  final category = _categories[index];
-                  final isSelected = category == _selectedCategory;
+              color: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: SizedBox(
+                height: 40,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  itemCount: _categories.length,
+                  itemBuilder: (context, index) {
+                    final category = _categories[index];
+                    final isSelected = category == _selectedCategory;
 
-                  return Padding(
-                    padding: EdgeInsets.only(right: 8),
-                    child: FilterChip(
-                      label: Text(category),
-                      selected: isSelected,
-                      onSelected: (selected) {
-                        setState(() {
-                          _selectedCategory = category;
-                        });
-                      },
-                      backgroundColor: Colors.grey[200],
-                      selectedColor: Colors.blue[700],
-                      labelStyle: TextStyle(
-                        color: isSelected ? Colors.white : Colors.black87,
-                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: FilterChip(
+                        label: Text(category),
+                        selected: isSelected,
+                        onSelected: (selected) {
+                          setState(() {
+                            _selectedCategory = category;
+                          });
+                        },
+                        backgroundColor: AppTheme.surface,
+                        selectedColor: AppTheme.primary,
+                        checkmarkColor: Colors.white,
+                        labelStyle: TextStyle(
+                          color: isSelected ? Colors.white : AppTheme.textPrimary,
+                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                        ),
+                        side: BorderSide(
+                          color: isSelected ? AppTheme.primary : AppTheme.border,
+                        ),
                       ),
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
               ),
             ),
           ),
 
           // Menu Items
           _isLoading
-              ? SliverFillRemaining(
-                  child: Center(child: CircularProgressIndicator()),
+              ? const SliverFillRemaining(
+                  child: Center(
+                    child: CircularProgressIndicator(
+                      color: AppTheme.primary,
+                    ),
+                  ),
                 )
               : _filteredMenuItems.isEmpty
                   ? SliverFillRemaining(
@@ -310,14 +341,17 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen> {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.restaurant_menu,
-                                size: 80, color: Colors.grey[400]),
-                            SizedBox(height: 16),
+                            Icon(
+                              Icons.restaurant_menu_outlined,
+                              size: 80,
+                              color: AppTheme.textLight,
+                            ),
+                            const SizedBox(height: 16),
                             Text(
                               'No menu items found',
                               style: TextStyle(
                                 fontSize: 18,
-                                color: Colors.grey[600],
+                                color: AppTheme.textSecondary,
                               ),
                             ),
                           ],
@@ -325,7 +359,7 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen> {
                       ),
                     )
                   : SliverPadding(
-                      padding: EdgeInsets.all(16),
+                      padding: const EdgeInsets.all(16),
                       sliver: SliverList(
                         delegate: SliverChildBuilderDelegate(
                           (context, index) {
@@ -343,22 +377,23 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen> {
 
   Widget _buildMenuItemCard(MenuItem item) {
     return Card(
-      margin: EdgeInsets.only(bottom: 16),
-      elevation: 2,
+      margin: const EdgeInsets.only(bottom: 12),
+      elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: AppTheme.border, width: 1),
       ),
       child: Padding(
-        padding: EdgeInsets.all(12),
+        padding: const EdgeInsets.all(12),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Item Image
+            // Food Image
             Container(
-              width: 80,
-              height: 80,
+              width: 90,
+              height: 90,
               decoration: BoxDecoration(
-                color: Colors.grey[200],
+                color: AppTheme.surface,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: item.imageUrl != null
@@ -368,51 +403,56 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen> {
                         item.imageUrl!,
                         fit: BoxFit.cover,
                         errorBuilder: (context, error, stackTrace) {
-                          return Icon(Icons.fastfood, size: 40, color: Colors.grey);
+                          return Icon(
+                            Icons.fastfood_outlined,
+                            size: 40,
+                            color: AppTheme.textLight,
+                          );
                         },
                       ),
                     )
-                  : Icon(Icons.fastfood, size: 40, color: Colors.grey),
+                  : Icon(
+                      Icons.fastfood_outlined,
+                      size: 40,
+                      color: AppTheme.textLight,
+                    ),
             ),
 
-            SizedBox(width: 12),
+            const SizedBox(width: 12),
 
             // Item Details
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Name with Veg/Non-veg indicator
+                  // Veg/Non-Veg Indicator & Name
                   Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Veg/Non-veg icon
                       Container(
-                        width: 16,
-                        height: 16,
+                        margin: const EdgeInsets.only(top: 2),
+                        padding: const EdgeInsets.all(2),
                         decoration: BoxDecoration(
                           border: Border.all(
-                            color: item.isVegetarian ? Colors.green : Colors.red,
-                            width: 2,
+                            color: item.isVegetarian ? AppTheme.success : AppTheme.error,
+                            width: 1.5,
                           ),
+                          borderRadius: BorderRadius.circular(3),
                         ),
-                        child: Center(
-                          child: Container(
-                            width: 8,
-                            height: 8,
-                            decoration: BoxDecoration(
-                              color: item.isVegetarian ? Colors.green : Colors.red,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
+                        child: Icon(
+                          Icons.circle,
+                          size: 10,
+                          color: item.isVegetarian ? AppTheme.success : AppTheme.error,
                         ),
                       ),
-                      SizedBox(width: 8),
+                      const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           item.name,
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: 16,
-                            fontWeight: FontWeight.bold,
+                            fontWeight: FontWeight.w600,
+                            color: AppTheme.textPrimary,
                           ),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
@@ -421,136 +461,138 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen> {
                     ],
                   ),
 
-                  SizedBox(height: 4),
+                  const SizedBox(height: 6),
+
+                  // Price
+                  Text(
+                    'Rs ${item.price.toStringAsFixed(0)}',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.textPrimary,
+                    ),
+                  ),
+
+                  const SizedBox(height: 4),
 
                   // Description
                   if (item.description != null)
                     Text(
                       item.description!,
                       style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[600],
+                        fontSize: 13,
+                        color: AppTheme.textSecondary,
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
 
-                  SizedBox(height: 8),
+                  const SizedBox(height: 12),
 
-                  // Price and Add Button with Cart Logic
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        '₹${item.price.toStringAsFixed(0)}',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.blue[700],
-                        ),
-                      ),
-                      
-                      // Cart Button Logic
-                      Consumer<CartProvider>(
-                        builder: (context, cartProvider, child) {
-                          final quantity = cartProvider.getItemQuantity(item.id);
+                  // Add Button
+                  Consumer<CartProvider>(
+                    builder: (context, cartProvider, child) {
+                      final quantity = cartProvider.getItemQuantity(item.id);
 
-                          if (!item.isAvailable) {
-                            return ElevatedButton(
-                              onPressed: null,
-                              style: ElevatedButton.styleFrom(
-                                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
+                      if (!item.isAvailable) {
+                        return Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: AppTheme.surface,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: AppTheme.border),
+                          ),
+                          child: Text(
+                            'Not Available',
+                            style: TextStyle(
+                              color: AppTheme.textLight,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                            ),
+                          ),
+                        );
+                      }
+
+                      if (quantity == 0) {
+                        return InkWell(
+                          onTap: () async {
+                            final success = await cartProvider.addItem(
+                              menuItemId: item.id,
+                              itemName: item.name,
+                              price: item.price,
+                              quantity: 1,
+                              restaurantId: widget.restaurant.id,
+                              restaurantName: widget.restaurant.name,
+                            );
+                            
+                            if (success && mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('${item.name} added to cart'),
+                                  duration: const Duration(milliseconds: 800),
+                                  backgroundColor: AppTheme.success,
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                            }
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: AppTheme.primary, width: 1.5),
+                            ),
+                            child: const Text(
+                              'ADD',
+                              style: TextStyle(
+                                color: AppTheme.primary,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                        );
+                      } else {
+                        return Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: AppTheme.primary,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              InkWell(
+                                onTap: () => cartProvider.decreaseQuantity(item.id),
+                                child: const Padding(
+                                  padding: EdgeInsets.all(4),
+                                  child: Icon(Icons.remove, color: Colors.white, size: 18),
                                 ),
                               ),
-                              child: Text('Unavailable'),
-                            );
-                          }
-
-                          if (quantity == 0) {
-                            // Show ADD button
-                            return ElevatedButton(
-                              onPressed: () {
-                                cartProvider.addItem(
-                                  item,
-                                  widget.restaurant.id,
-                                  widget.restaurant.name,
-                                );
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text('${item.name} added to cart'),
-                                    duration: const Duration(seconds: 1),
-                                    backgroundColor: Colors.green,
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 12),
+                                child: Text(
+                                  '$quantity',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 16,
                                   ),
-                                );
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.blue[700],
-                                foregroundColor: Colors.white,
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: 20,
-                                  vertical: 8,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
                                 ),
                               ),
-                              child: const Text(
-                                'ADD',
-                                style: TextStyle(fontWeight: FontWeight.bold),
+                              InkWell(
+                                onTap: () => cartProvider.increaseQuantity(item.id),
+                                child: const Padding(
+                                  padding: EdgeInsets.all(4),
+                                  child: Icon(Icons.add, color: Colors.white, size: 18),
+                                ),
                               ),
-                            );
-                          } else {
-                            // Show quantity controls
-                            return Container(
-                              decoration: BoxDecoration(
-                                color: Colors.blue[700],
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  IconButton(
-                                    onPressed: () {
-                                      cartProvider.decreaseQuantity(item.id);
-                                    },
-                                    icon: const Icon(Icons.remove, color: Colors.white, size: 18),
-                                    constraints: const BoxConstraints(
-                                      minWidth: 32,
-                                      minHeight: 32,
-                                    ),
-                                    padding: EdgeInsets.zero,
-                                  ),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                                    child: Text(
-                                      '$quantity',
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 16,
-                                      ),
-                                    ),
-                                  ),
-                                  IconButton(
-                                    onPressed: () {
-                                      cartProvider.increaseQuantity(item.id);
-                                    },
-                                    icon: const Icon(Icons.add, color: Colors.white, size: 18),
-                                    constraints: const BoxConstraints(
-                                      minWidth: 32,
-                                      minHeight: 32,
-                                    ),
-                                    padding: EdgeInsets.zero,
-                                  ),
-                                ],
-                              ),
-                            );
-                          }
-                        },
-                      ),
-                    ],
+                            ],
+                          ),
+                        );
+                      }
+                    },
                   ),
                 ],
               ),

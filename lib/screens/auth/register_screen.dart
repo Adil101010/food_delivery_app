@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../config/app_theme.dart';
 import '../../services/api_service.dart';
-
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({Key? key}) : super(key: key);
@@ -25,13 +25,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Future<void> _handleRegister() async {
     if (!_formKey.currentState!.validate()) return;
     
-    // Check if passwords match
     if (_passwordController.text != _confirmPasswordController.text) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Passwords do not match!'),
-          backgroundColor: Colors.red,
-        ),
+      _showErrorDialog(
+        'Passwords Do Not Match',
+        'Please make sure both passwords are identical.',
       );
       return;
     }
@@ -42,59 +39,161 @@ class _RegisterScreenState extends State<RegisterScreen> {
       final response = await _apiService.register(
         _usernameController.text.trim(),
         _emailController.text.trim(),
-        _passwordController.text,
         _phoneController.text.trim(),
+        _passwordController.text,
       );
       
       if (mounted) {
-        // Check if backend returned token
         if (response['accessToken'] != null) {
-          // Token received - save and navigate to home
           final prefs = await SharedPreferences.getInstance();
           await prefs.setString('access_token', response['accessToken']);
           await prefs.setInt('user_id', response['userId']);
           await prefs.setString('email', response['email']);
           await prefs.setString('phone', response['phone'] ?? '');
           
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Registration Successful! 🎉 Logging you in...'),
-              backgroundColor: Colors.green,
-              duration: Duration(seconds: 2),
-            ),
+          _showSuccessDialog(
+            'Registration Successful! 🎉',
+            'Welcome to our food delivery app!',
+            onOkPressed: () {
+              Navigator.pushReplacementNamed(context, '/home');
+            },
           );
-          
-          // Navigate to home
-          Navigator.pushReplacementNamed(context, '/home');
         } else {
-          // No token - ask user to login manually
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Registration Successful! 🎉 Please login.'),
-              backgroundColor: Colors.green,
-              duration: Duration(seconds: 2),
-            ),
+          _showSuccessDialog(
+            'Registration Successful! 🎉',
+            'Please login with your credentials.',
+            onOkPressed: () {
+              Navigator.pop(context);
+            },
           );
-          
-          // Navigate back to login
-          Navigator.pop(context);
         }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Registration Failed: ${e.toString()}'),
-            backgroundColor: Colors.red,
-            duration: Duration(seconds: 3),
-          ),
-        );
+        String errorTitle = 'Registration Failed';
+        String errorMessage = e.toString().replaceAll('Exception: ', '');
+        
+        // Customize title based on error
+        if (errorMessage.toLowerCase().contains('email')) {
+          errorTitle = 'Email Issue';
+        } else if (errorMessage.toLowerCase().contains('username')) {
+          errorTitle = 'Username Issue';
+        } else if (errorMessage.toLowerCase().contains('phone')) {
+          errorTitle = 'Phone Number Issue';
+        } else if (errorMessage.toLowerCase().contains('internet') || 
+                   errorMessage.toLowerCase().contains('connection')) {
+          errorTitle = 'Connection Error';
+        }
+        
+        _showErrorDialog(errorTitle, errorMessage);
       }
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
       }
     }
+  }
+  
+  // Error Dialog
+  void _showErrorDialog(String title, String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: Row(
+          children: [
+            Icon(Icons.error_outline, color: AppTheme.error, size: 28),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          message,
+          style: TextStyle(
+            fontSize: 15,
+            color: AppTheme.textSecondary,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text(
+              'OK',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.primary,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Success Dialog
+  void _showSuccessDialog(
+    String title,
+    String message, {
+    required VoidCallback onOkPressed,
+  }) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: Row(
+          children: [
+            Icon(Icons.check_circle, color: AppTheme.success, size: 28),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          message,
+          style: TextStyle(
+            fontSize: 15,
+            color: AppTheme.textSecondary,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              onOkPressed();
+            },
+            child: const Text(
+              'Continue',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.primary,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
   
   @override
@@ -114,54 +213,75 @@ class _RegisterScreenState extends State<RegisterScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        foregroundColor: Colors.blue[700],
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
+          color: AppTheme.textPrimary,
+        ),
       ),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: EdgeInsets.all(24),
+            padding: const EdgeInsets.all(24),
             child: Form(
               key: _formKey,
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   // Logo
-                  Text(
-                    '🍕',
-                    style: TextStyle(fontSize: 80),
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primary.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Text(
+                      '🍕',
+                      style: TextStyle(fontSize: 60),
+                    ),
                   ),
-                  SizedBox(height: 16),
+                  const SizedBox(height: 24),
                   
                   // Title
-                  Text(
+                  const Text(
                     'Create Account',
                     style: TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.bold,
-                      color: Colors.blue[700],
+                      color: AppTheme.textPrimary,
                     ),
                   ),
-                  SizedBox(height: 8),
+                  const SizedBox(height: 8),
                   Text(
-                    'Sign up to get started',
+                    'Sign up to get started with delicious food',
                     style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.grey[600],
+                      fontSize: 15,
+                      color: AppTheme.textSecondary,
                     ),
+                    textAlign: TextAlign.center,
                   ),
-                  SizedBox(height: 40),
+                  const SizedBox(height: 40),
                   
                   // Username Field
                   TextFormField(
                     controller: _usernameController,
                     decoration: InputDecoration(
                       labelText: 'Username',
-                      prefixIcon: Icon(Icons.person),
+                      prefixIcon: Icon(Icons.person_outline, color: AppTheme.textSecondary),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: AppTheme.border),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: AppTheme.border),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: AppTheme.primary, width: 2),
                       ),
                       filled: true,
-                      fillColor: Colors.grey[50],
+                      fillColor: AppTheme.surface,
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
@@ -173,7 +293,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       return null;
                     },
                   ),
-                  SizedBox(height: 16),
+                  const SizedBox(height: 16),
                   
                   // Email Field
                   TextFormField(
@@ -181,12 +301,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     keyboardType: TextInputType.emailAddress,
                     decoration: InputDecoration(
                       labelText: 'Email',
-                      prefixIcon: Icon(Icons.email),
+                      prefixIcon: Icon(Icons.email_outlined, color: AppTheme.textSecondary),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: AppTheme.border),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: AppTheme.border),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: AppTheme.primary, width: 2),
                       ),
                       filled: true,
-                      fillColor: Colors.grey[50],
+                      fillColor: AppTheme.surface,
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
@@ -198,7 +327,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       return null;
                     },
                   ),
-                  SizedBox(height: 16),
+                  const SizedBox(height: 16),
                   
                   // Phone Field
                   TextFormField(
@@ -206,12 +335,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     keyboardType: TextInputType.phone,
                     decoration: InputDecoration(
                       labelText: 'Phone Number',
-                      prefixIcon: Icon(Icons.phone),
+                      prefixIcon: Icon(Icons.phone_outlined, color: AppTheme.textSecondary),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: AppTheme.border),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: AppTheme.border),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: AppTheme.primary, width: 2),
                       ),
                       filled: true,
-                      fillColor: Colors.grey[50],
+                      fillColor: AppTheme.surface,
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
@@ -223,7 +361,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       return null;
                     },
                   ),
-                  SizedBox(height: 16),
+                  const SizedBox(height: 16),
                   
                   // Password Field
                   TextFormField(
@@ -231,10 +369,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     obscureText: _obscurePassword,
                     decoration: InputDecoration(
                       labelText: 'Password',
-                      prefixIcon: Icon(Icons.lock),
+                      prefixIcon: Icon(Icons.lock_outline, color: AppTheme.textSecondary),
                       suffixIcon: IconButton(
                         icon: Icon(
-                          _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                          _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                          color: AppTheme.textSecondary,
                         ),
                         onPressed: () {
                           setState(() => _obscurePassword = !_obscurePassword);
@@ -242,9 +381,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: AppTheme.border),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: AppTheme.border),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: AppTheme.primary, width: 2),
                       ),
                       filled: true,
-                      fillColor: Colors.grey[50],
+                      fillColor: AppTheme.surface,
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
@@ -256,7 +404,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       return null;
                     },
                   ),
-                  SizedBox(height: 16),
+                  const SizedBox(height: 16),
                   
                   // Confirm Password Field
                   TextFormField(
@@ -264,10 +412,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     obscureText: _obscureConfirmPassword,
                     decoration: InputDecoration(
                       labelText: 'Confirm Password',
-                      prefixIcon: Icon(Icons.lock_outline),
+                      prefixIcon: Icon(Icons.lock_outline, color: AppTheme.textSecondary),
                       suffixIcon: IconButton(
                         icon: Icon(
-                          _obscureConfirmPassword ? Icons.visibility_off : Icons.visibility,
+                          _obscureConfirmPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                          color: AppTheme.textSecondary,
                         ),
                         onPressed: () {
                           setState(() => _obscureConfirmPassword = !_obscureConfirmPassword);
@@ -275,9 +424,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: AppTheme.border),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: AppTheme.border),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: AppTheme.primary, width: 2),
                       ),
                       filled: true,
-                      fillColor: Colors.grey[50],
+                      fillColor: AppTheme.surface,
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
@@ -286,40 +444,42 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       return null;
                     },
                   ),
-                  SizedBox(height: 24),
+                  const SizedBox(height: 32),
                   
                   // Register Button
                   SizedBox(
                     width: double.infinity,
-                    height: 50,
+                    height: 56,
                     child: ElevatedButton(
                       onPressed: _isLoading ? null : _handleRegister,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue[700],
+                        backgroundColor: AppTheme.primary,
+                        disabledBackgroundColor: AppTheme.primary.withOpacity(0.6),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
+                        elevation: 0,
                       ),
                       child: _isLoading
-                          ? SizedBox(
-                              height: 20,
-                              width: 20,
+                          ? const SizedBox(
+                              height: 24,
+                              width: 24,
                               child: CircularProgressIndicator(
                                 color: Colors.white,
-                                strokeWidth: 2,
+                                strokeWidth: 2.5,
                               ),
                             )
-                          : Text(
-                              'Register',
+                          : const Text(
+                              'Create Account',
                               style: TextStyle(
                                 fontSize: 18,
                                 color: Colors.white,
-                                fontWeight: FontWeight.bold,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
                     ),
                   ),
-                  SizedBox(height: 16),
+                  const SizedBox(height: 24),
                   
                   // Login Link
                   Row(
@@ -327,17 +487,26 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     children: [
                       Text(
                         'Already have an account? ',
-                        style: TextStyle(color: Colors.grey[600]),
+                        style: TextStyle(
+                          color: AppTheme.textSecondary,
+                          fontSize: 15,
+                        ),
                       ),
                       TextButton(
                         onPressed: () {
                           Navigator.pop(context);
                         },
-                        child: Text(
+                        style: TextButton.styleFrom(
+                          padding: EdgeInsets.zero,
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        child: const Text(
                           'Login',
                           style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.blue[700],
+                            fontWeight: FontWeight.w600,
+                            color: AppTheme.primary,
+                            fontSize: 15,
                           ),
                         ),
                       ),
