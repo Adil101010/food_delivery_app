@@ -4,7 +4,6 @@ import '../../config/app_theme.dart';
 import '../../models/restaurant_model.dart';
 import '../../services/api_service.dart';
 import '../restaurant/restaurant_detail_screen.dart';
-import '../orders/order_history_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -74,13 +73,6 @@ class _HomeScreenState extends State<HomeScreen> {
             .toList();
       }
     });
-  }
-
-  Future<void> _handleLogout() async {
-    await _apiService.logout();
-    if (mounted) {
-      Navigator.pushReplacementNamed(context, '/login');
-    }
   }
 
   @override
@@ -159,54 +151,21 @@ class _HomeScreenState extends State<HomeScreen> {
                         // Action Icons
                         IconButton(
                           icon: Icon(
-                            Icons.receipt_long_outlined,
+                            Icons.person_outline,
                             color: AppTheme.textPrimary,
                           ),
                           onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const OrderHistoryScreen(),
-                              ),
-                            );
+                            Navigator.pushNamed(context, '/profile');
                           },
                         ),
                         
                         IconButton(
                           icon: Icon(
-                            Icons.logout_outlined,
+                            Icons.shopping_bag_outlined,
                             color: AppTheme.textPrimary,
                           ),
                           onPressed: () {
-                            showDialog(
-                              context: context,
-                              builder: (context) => AlertDialog(
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                                title: const Text('Logout'),
-                                content: const Text('Are you sure you want to logout?'),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () => Navigator.pop(context),
-                                    child: Text(
-                                      'Cancel',
-                                      style: TextStyle(color: AppTheme.textSecondary),
-                                    ),
-                                  ),
-                                  TextButton(
-                                    onPressed: () {
-                                      Navigator.pop(context);
-                                      _handleLogout();
-                                    },
-                                    child: Text(
-                                      'Logout',
-                                      style: TextStyle(color: AppTheme.error),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            );
+                            Navigator.pushNamed(context, '/cart');
                           },
                         ),
                       ],

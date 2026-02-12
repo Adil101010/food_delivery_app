@@ -1,9 +1,12 @@
 import 'package:dio/dio.dart';
 import '../config/api_config.dart';
 import 'token_manager.dart';
+import '../models/user.dart';
+
 
 class ApiService {
   late final Dio _dio;
+
 
   ApiService() {
     _dio = Dio(BaseOptions(
@@ -11,6 +14,7 @@ class ApiService {
       connectTimeout: ApiConfig.connectTimeout,
       receiveTimeout: ApiConfig.receiveTimeout,
     ));
+
 
     _dio.interceptors.add(
       InterceptorsWrapper(
@@ -20,31 +24,31 @@ class ApiService {
           if (token != null) {
             options.headers['Authorization'] = 'Bearer $token';
             if (ApiConfig.isDebugMode) {
-              print(' Token added to: ${options.path}');
+              print('🔑 Token added to: ${options.path}');
             }
           }
           
           if (ApiConfig.isDebugMode) {
-            print('Request: ${options.method} ${options.baseUrl}${options.path}');
+            print('📤 Request: ${options.method} ${options.baseUrl}${options.path}');
           }
           
           return handler.next(options);
         },
         onResponse: (response, handler) {
           if (ApiConfig.isDebugMode) {
-            print(' Response: ${response.statusCode} from ${response.requestOptions.path}');
+            print('📥 Response: ${response.statusCode} from ${response.requestOptions.path}');
           }
           return handler.next(response);
         },
         onError: (error, handler) async {
           if (ApiConfig.isDebugMode) {
-            print('   API Error: ${error.message}');
+            print('❌ API Error: ${error.message}');
             print('   Status Code: ${error.response?.statusCode}');
             print('   URL: ${error.requestOptions.baseUrl}${error.requestOptions.path}');
           }
           
           if (error.response?.statusCode == 401) {
-            print('Unauthorized - Clearing auth data');
+            print('🚫 Unauthorized - Clearing auth data');
             await TokenManager.clearAuthData();
           }
           
@@ -55,7 +59,7 @@ class ApiService {
     
     if (ApiConfig.isDebugMode) {
       print('════════════════════════════════════════');
-      print('   ApiService Initialized');
+      print('🚀 ApiService Initialized');
       print('   Base URL: ${ApiConfig.baseUrl}');
       print('   Connect Timeout: ${ApiConfig.connectTimeout.inSeconds}s');
       print('   Receive Timeout: ${ApiConfig.receiveTimeout.inSeconds}s');
@@ -63,16 +67,18 @@ class ApiService {
     }
   }
 
+
   // Extract error message helper
   String _extractErrorMessage(dynamic error, String defaultMessage) {
     if (error is DioException) {
       // Log detailed error for debugging
       if (ApiConfig.isDebugMode) {
-        print('   Error Details:');
+        print('❌ Error Details:');
         print('   Type: ${error.type}');
         print('   Message: ${error.message}');
         print('   Status: ${error.response?.statusCode}');
       }
+
 
       // Check backend response
       if (error.response?.data != null) {
@@ -122,15 +128,16 @@ class ApiService {
     return defaultMessage;
   }
 
+
   // Get Restaurants
   Future<List<dynamic>> getRestaurants() async {
     try {
-      print('Fetching restaurants...');
+      print('🏪 Fetching restaurants...');
       final response = await _dio.get('/api/restaurants');
-      print('Restaurants fetched: ${response.data.length}');
+      print('✅ Restaurants fetched: ${response.data.length}');
       return response.data;
     } on DioException catch (e) {
-      print('Failed to fetch restaurants: ${e.message}');
+      print('❌ Failed to fetch restaurants: ${e.message}');
       throw Exception(_extractErrorMessage(
         e,
         'Failed to load restaurants. Please try again.',
@@ -138,18 +145,20 @@ class ApiService {
     }
   }
 
+
   Future<List<dynamic>> getAllRestaurants() async {
     return await getRestaurants();
   }
 
+
   // Get Restaurant by ID
   Future<Map<String, dynamic>> getRestaurantById(int id) async {
     try {
-      print('Fetching restaurant: $id');
+      print('🏪 Fetching restaurant: $id');
       final response = await _dio.get('/api/restaurants/$id');
       return response.data;
     } catch (e) {
-      print('Failed to fetch restaurant: $e');
+      print('❌ Failed to fetch restaurant: $e');
       throw Exception(_extractErrorMessage(
         e,
         'Failed to load restaurant details.',
@@ -157,21 +166,23 @@ class ApiService {
     }
   }
 
+
   // Get Menu Items
   Future<List<dynamic>> getMenuItems(int restaurantId) async {
     try {
-      print('Fetching menu for restaurant $restaurantId...');
+      print('🍽️ Fetching menu for restaurant $restaurantId...');
       final response = await _dio.get('/api/menu/restaurant/$restaurantId/available');
-      print('Menu items fetched: ${response.data.length}');
+      print('✅ Menu items fetched: ${response.data.length}');
       return response.data;
     } on DioException catch (e) {
-      print('Failed to fetch menu: ${e.message}');
+      print('❌ Failed to fetch menu: ${e.message}');
       throw Exception(_extractErrorMessage(
         e,
         'Failed to load menu. Please try again.',
       ));
     }
   }
+
 
   // Search Restaurants
   Future<List<dynamic>> searchRestaurants(String query) async {
@@ -183,7 +194,7 @@ class ApiService {
       );
       return response.data;
     } catch (e) {
-      print('Search failed: $e');
+      print('❌ Search failed: $e');
       throw Exception(_extractErrorMessage(
         e,
         'Failed to search restaurants.',
@@ -191,20 +202,22 @@ class ApiService {
     }
   }
 
+
   // Get Restaurants by Cuisine
   Future<List<dynamic>> getRestaurantsByCuisine(String cuisine) async {
     try {
-      print('Fetching restaurants by cuisine: $cuisine');
+      print('🍜 Fetching restaurants by cuisine: $cuisine');
       final response = await _dio.get('/api/restaurants/cuisine/$cuisine');
       return response.data;
     } catch (e) {
-      print('Failed to fetch by cuisine: $e');
+      print('❌ Failed to fetch by cuisine: $e');
       throw Exception(_extractErrorMessage(
         e,
         'Failed to load restaurants.',
       ));
     }
   }
+
 
   // Register User
   Future<Map<String, dynamic>> register(
@@ -214,7 +227,8 @@ class ApiService {
     String password,
   ) async {
     try {
-      print('Register attempt: $email');
+      print('📝 Register attempt: $email');
+
 
       final response = await _dio.post(
         '/api/auth/register',
@@ -227,11 +241,14 @@ class ApiService {
         },
       );
 
-      print('Registration successful');
+
+      print('✅ Registration successful');
+
 
       if (response.data != null && response.data['accessToken'] != null) {
         final token = response.data['accessToken'];
         final userId = response.data['userId'];
+
 
         await TokenManager.saveAuthData(
           token: token,
@@ -241,11 +258,13 @@ class ApiService {
           userPhone: phone,
         );
 
+
         return response.data;
       } else if (response.data['success'] == true) {
         final data = response.data['data'];
         final token = data['token'];
         final user = data['user'];
+
 
         await TokenManager.saveAuthData(
           token: token,
@@ -255,12 +274,13 @@ class ApiService {
           userPhone: user['phone'],
         );
 
+
         return response.data;
       } else {
         throw Exception('Invalid registration response format');
       }
     } on DioException catch (e) {
-      print('Registration error: ${e.message}');
+      print('❌ Registration error: ${e.message}');
       throw Exception(_extractErrorMessage(
         e,
         'Registration failed. Please try again.',
@@ -268,9 +288,71 @@ class ApiService {
     }
   }
 
+
+  // Get Current User Profile
+  Future<User> getCurrentUser() async {
+    try {
+      print('📱 Fetching current user profile...');
+      final response = await _dio.get('/api/users/profile');
+      
+      if (response.data != null) {
+        print('✅ User profile fetched successfully');
+        return User.fromJson(response.data);
+      } else {
+        throw Exception('Invalid profile response');
+      }
+    } on DioException catch (e) {
+      print('❌ Failed to fetch user profile: ${e.message}');
+      throw Exception(_extractErrorMessage(
+        e,
+        'Failed to load profile. Please try again.',
+      ));
+    }
+  }
+
+
+  // Update User Profile
+  Future<void> updateProfile({
+    required String name,
+    required String phone,
+  }) async {
+    try {
+      print('📝 Updating user profile...');
+      print('   Name: $name');
+      print('   Phone: $phone');
+      
+      final response = await _dio.put(
+        '/api/users/profile',
+        data: {
+          'name': name,
+          'phone': phone,
+        },
+      );
+      
+      if (response.statusCode == 200) {
+        print('✅ Profile updated successfully');
+        
+        // Update stored user data
+        await TokenManager.updateUserData(
+          userName: name,
+          userPhone: phone,
+        );
+      } else {
+        throw Exception('Failed to update profile');
+      }
+    } on DioException catch (e) {
+      print('❌ Failed to update profile: ${e.message}');
+      throw Exception(_extractErrorMessage(
+        e,
+        'Failed to update profile. Please try again.',
+      ));
+    }
+  }
+
+
   // Logout
   Future<void> logout() async {
     await TokenManager.clearAuthData();
-    print('Logged out successfully');
+    print('👋 Logged out successfully');
   }
 }

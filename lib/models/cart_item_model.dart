@@ -5,6 +5,7 @@ class CartItem {
   final double price;
   final int quantity;
   final String? imageUrl;
+  final String? specialInstructions;
   final int? restaurantId;
   final String? restaurantName;
 
@@ -16,6 +17,7 @@ class CartItem {
     required this.quantity,
     this.imageUrl,
     this.restaurantId,
+     this.specialInstructions, 
     this.restaurantName,
   });
 
@@ -52,6 +54,7 @@ class CartItem {
       quantity: json['quantity'] ?? 1,
       imageUrl: json['imageUrl'] ?? json['image_url'],
       restaurantId: json['restaurantId'] ?? json['restaurant_id'],
+       specialInstructions: json['specialInstructions'],
       restaurantName: json['restaurantName'] ?? json['restaurant_name'],
     );
   }

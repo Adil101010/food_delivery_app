@@ -6,30 +6,37 @@ import '../../services/order_service.dart';
 import '../orders/order_confirmation_screen.dart';
 import '../../services/token_manager.dart';
 
+
 class CheckoutScreen extends StatefulWidget {
   const CheckoutScreen({Key? key}) : super(key: key);
+
 
   @override
   State<CheckoutScreen> createState() => _CheckoutScreenState();
 }
 
+
 class _CheckoutScreenState extends State<CheckoutScreen> {
   final _formKey = GlobalKey<FormState>();
   final _orderService = OrderService();
+
 
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
   final _addressController = TextEditingController();
   final _instructionsController = TextEditingController();
 
+
   String _selectedPaymentMethod = 'CASH_ON_DELIVERY';
   bool _isProcessing = false;
+
 
   @override
   void initState() {
     super.initState();
     _loadUserData();
   }
+
 
   Future<void> _loadUserData() async {
     final userName = await TokenManager.getUserName();
@@ -41,8 +48,14 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     });
   }
 
+
   Future<void> _placeOrder() async {
+    print('========================================');
+    print('PLACE ORDER STARTED');
+    print('========================================');
+    
     final isLoggedIn = await TokenManager.isLoggedIn();
+    print('Is logged in: $isLoggedIn');
     
     if (!isLoggedIn) {
       if (mounted) {
@@ -58,9 +71,32 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       return;
     }
     
-    final userData = await TokenManager.getUserData();
-    final userId = userData['userId'];
-    final userEmail = userData['userEmail'];
+    // Get userId and userEmail directly
+    final userId = await TokenManager.getUserId();
+    final userEmail = await TokenManager.getUserEmail();
+    
+    print('========================================');
+    print('USER DATA FROM STORAGE');
+    print('========================================');
+    print('UserId: $userId');
+    print('UserEmail: $userEmail');
+    print('========================================');
+    
+    // Check if userId is null
+    if (userId == null) {
+      print('ERROR: UserId is null');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('User session expired. Please login again.'),
+            backgroundColor: AppTheme.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        Navigator.pushReplacementNamed(context, '/login');
+      }
+      return;
+    }
     
     if (!_formKey.currentState!.validate()) {
       return;
@@ -93,7 +129,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         'restaurantName': 'Restaurant',
         'customerName': _nameController.text,
         'customerPhone': _phoneController.text,
-        'customerEmail': userEmail,
+        'customerEmail': userEmail ?? '',
         'deliveryAddress': _addressController.text,
         'deliveryInstructions': _instructionsController.text.isEmpty
             ? null
@@ -113,16 +149,21 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         }).toList(),
       };
       
-      print('Creating order...');
+      print('========================================');
+      print('ORDER DATA TO BE SENT');
+      print('========================================');
+      print('Order data: $orderData');
+      print('========================================');
+      
       final response = await _orderService.createOrder(orderData);
       
       print('========================================');
-      print('RESPONSE DEBUG START');
+      print('RESPONSE RECEIVED');
       print('========================================');
       print('Full response: $response');
       print('Response type: ${response.runtimeType}');
       print('Response keys: ${response.keys.toList()}');
-      print('----------------------------------------');
+      print('========================================');
       
       final data = response['data'];
       print('Data extracted: $data');
@@ -139,12 +180,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             print('Order: ${data['order']}');
             print('Order ID: ${data['order']['id']}');
           } else {
-            print('Order is NULL!');
+            print('Order is NULL');
           }
         }
       }
-      print('========================================');
-      print('RESPONSE DEBUG END');
       print('========================================');
 
       setState(() => _isProcessing = false);
@@ -184,7 +223,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         }
       }
     } catch (e) {
-      print('Order error: $e');
+      print('========================================');
+      print('ORDER ERROR');
+      print('========================================');
+      print('Error: $e');
+      print('========================================');
+      
       setState(() => _isProcessing = false);
 
       if (mounted) {
@@ -218,6 +262,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     }
   }
 
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -235,10 +280,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             );
           }
 
+
           final subtotal = cartProvider.totalAmount;
           final deliveryFee = 40.0;
           final tax = subtotal * 0.05;
           final grandTotal = subtotal + deliveryFee + tax;
+
 
           return SingleChildScrollView(
             child: Column(
@@ -601,6 +648,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
   }
 
+
   Widget _buildBillRow(String label, double amount) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -624,6 +672,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
   }
 
+
   @override
   void dispose() {
     _nameController.dispose();
@@ -634,12 +683,14 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 }
 
+
 class _PaymentOption extends StatelessWidget {
   final String title;
   final IconData icon;
   final String value;
   final String groupValue;
   final ValueChanged<String?> onChanged;
+
 
   const _PaymentOption({
     required this.title,
@@ -648,6 +699,7 @@ class _PaymentOption extends StatelessWidget {
     required this.groupValue,
     required this.onChanged,
   });
+
 
   @override
   Widget build(BuildContext context) {

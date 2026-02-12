@@ -3,9 +3,11 @@ import '../config/api_config.dart';
 import '../models/order_model.dart';
 import 'token_manager.dart';
 
+
 class OrderService {
   final Dio _dio;
   final String _baseUrl;
+
 
   OrderService()
       : _baseUrl = ApiConfig.baseUrl,
@@ -13,11 +15,12 @@ class OrderService {
           connectTimeout: ApiConfig.connectTimeout,
           receiveTimeout: ApiConfig.receiveTimeout,
         )) {
-    print('OrderService initialized');
+    print('🔧 OrderService initialized');
     print('   Base URL: $_baseUrl');
   }
 
-  // ✅ CREATE ORDER METHOD (Add this)
+
+  // ✅ CREATE ORDER METHOD
   Future<Map<String, dynamic>> createOrder(Map<String, dynamic> orderData) async {
     try {
       final token = await TokenManager.getStoredToken();
@@ -26,7 +29,13 @@ class OrderService {
         throw Exception('Please login to place order');
       }
 
-      print('Creating order with data: $orderData');
+      // ✅ Verify userId is present
+      if (orderData['userId'] == null) {
+        throw Exception('User ID is missing. Please logout and login again.');
+      }
+
+      print('🛒 Creating order with userId: ${orderData['userId']}');
+      print('📦 Order data: $orderData');
 
       final response = await _dio.post(
         '$_baseUrl/api/orders',
@@ -39,7 +48,8 @@ class OrderService {
         ),
       );
 
-      print('Create order response: ${response.data}');
+      print('✅ Create order response status: ${response.statusCode}');
+      print('✅ Create order response data: ${response.data}');
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         return response.data is Map<String, dynamic> 
@@ -49,8 +59,8 @@ class OrderService {
         throw Exception('Failed to create order');
       }
     } on DioException catch (e) {
-      print('Create order error: ${e.message}');
-      print('Error response: ${e.response?.data}');
+      print('❌ Create order error: ${e.message}');
+      print('❌ Error response: ${e.response?.data}');
       
       if (e.response?.data != null && e.response?.data is Map) {
         final errorData = e.response!.data as Map<String, dynamic>;
@@ -68,6 +78,7 @@ class OrderService {
     }
   }
 
+
   // Get user orders
   Future<List<Order>> getUserOrders() async {
     try {
@@ -78,8 +89,8 @@ class OrderService {
         throw Exception('Please login to view orders');
       }
 
-      print('OrderService: Token retrieved');
-      print('Fetching orders for user: $userId');
+      print('🔐 OrderService: Token retrieved');
+      print('📋 Fetching orders for user: $userId');
 
       final response = await _dio.get(
         '$_baseUrl/api/orders/user/$userId',
@@ -90,7 +101,7 @@ class OrderService {
         ),
       );
 
-      print('Orders response status: ${response.statusCode}');
+      print('✅ Orders response status: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final data = response.data;
@@ -105,13 +116,13 @@ class OrderService {
         }
 
         final orders = ordersJson.map((json) => Order.fromJson(json)).toList();
-        print('Parsed ${orders.length} orders');
+        print('✅ Parsed ${orders.length} orders');
         return orders;
       } else {
         throw Exception('Failed to fetch orders');
       }
     } on DioException catch (e) {
-      print('Error fetching orders: ${e.message}');
+      print('❌ Error fetching orders: ${e.message}');
       
       if (e.response?.statusCode == 401) {
         await TokenManager.clearAuthData();
@@ -120,12 +131,13 @@ class OrderService {
       
       throw Exception('Failed to load orders. Please try again.');
     } catch (e) {
-      print('Unexpected error: $e');
+      print('❌ Unexpected error: $e');
       throw Exception('Failed to load orders');
     }
   }
 
-  // Get order by ID - ✅ FIXED TYPE CASTING
+
+  // Get order by ID
   Future<Order> getOrderById(int orderId) async {
     try {
       final token = await TokenManager.getStoredToken();
@@ -134,7 +146,7 @@ class OrderService {
         throw Exception('Please login to view order details');
       }
 
-      print('Fetching order details: $orderId');
+      print('📋 Fetching order details: $orderId');
 
       final response = await _dio.get(
         '$_baseUrl/api/orders/$orderId',
@@ -145,16 +157,14 @@ class OrderService {
         ),
       );
 
-      print('Order detail response status: ${response.statusCode}');
+      print('✅ Order detail response status: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final data = response.data;
 
         if (data is Map && data['data'] != null) {
-          // Cast to Map<String, dynamic>
           return Order.fromJson(Map<String, dynamic>.from(data['data']));
         } else if (data is Map) {
-          // Cast to Map<String, dynamic>
           return Order.fromJson(Map<String, dynamic>.from(data));
         } else {
           throw Exception('Invalid response format');
@@ -163,7 +173,7 @@ class OrderService {
         throw Exception('Failed to fetch order details');
       }
     } on DioException catch (e) {
-      print('Error fetching order: ${e.message}');
+      print('❌ Error fetching order: ${e.message}');
       
       if (e.response?.statusCode == 401) {
         await TokenManager.clearAuthData();
@@ -181,6 +191,7 @@ class OrderService {
     }
   }
 
+
   // Cancel order
   Future<void> cancelOrder(int orderId) async {
     try {
@@ -192,7 +203,7 @@ class OrderService {
         throw Exception('Please login to cancel order');
       }
 
-      print('Token: ${token.substring(0, 20)}...');
+      print('🔑 Token: ${token.substring(0, 20)}...');
 
       final response = await _dio.post(
         '$_baseUrl/api/orders/$orderId/cancel',
@@ -217,11 +228,9 @@ class OrderService {
       print('❌ Response: ${e.response?.data}');
       print('❌ Status code: ${e.response?.statusCode}');
       
-      // Extract error message from backend
       if (e.response?.data != null) {
         final data = e.response!.data;
         
-        // Handle ApiResponse format
         if (data is Map<String, dynamic>) {
           if (data['message'] != null) {
             throw Exception(data['message']);
@@ -232,7 +241,6 @@ class OrderService {
         }
       }
       
-      // Handle specific status codes
       if (e.response?.statusCode == 401) {
         await TokenManager.clearAuthData();
         throw Exception('Session expired. Please login again.');
