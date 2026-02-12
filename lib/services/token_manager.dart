@@ -23,6 +23,7 @@ class TokenManager {
     await prefs.setString(_userPhoneKey, userPhone);
     
     print('✅ Auth data saved successfully');
+    print('   UserId: $userId');
     print('   User: $userName');
     print('   Email: $userEmail');
     print('   Phone: $userPhone');
@@ -63,13 +64,26 @@ class TokenManager {
     return prefs.getString(_userPhoneKey);
   }
 
-  // Get user data
-  static Future<Map<String, String>> getUserData() async {
+  // Get user data - FIXED to include userId
+  static Future<Map<String, dynamic>> getUserData() async {
     final prefs = await SharedPreferences.getInstance();
+    
+    final userId = prefs.getInt(_userIdKey);
+    final userName = prefs.getString(_userNameKey) ?? '';
+    final userEmail = prefs.getString(_userEmailKey) ?? '';
+    final userPhone = prefs.getString(_userPhoneKey) ?? '';
+    
+    print('📖 Retrieved user data:');
+    print('   UserId: $userId');
+    print('   UserName: $userName');
+    print('   UserEmail: $userEmail');
+    print('   UserPhone: $userPhone');
+    
     return {
-      'userName': prefs.getString(_userNameKey) ?? '',
-      'userEmail': prefs.getString(_userEmailKey) ?? '',
-      'userPhone': prefs.getString(_userPhoneKey) ?? '',
+      'userId': userId,
+      'userName': userName,
+      'userEmail': userEmail,
+      'userPhone': userPhone,
     };
   }
 

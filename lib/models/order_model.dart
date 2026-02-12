@@ -5,9 +5,9 @@ class Order {
   final int userId;
   final int restaurantId;
   final String restaurantName;
-  final double subtotal;           
-  final double deliveryFee;        
-  final double tax;                
+  final double subtotal;
+  final double deliveryFee;
+  final double tax;
   final double totalAmount;
   final String status;
   final String deliveryAddress;
@@ -51,12 +51,12 @@ class Order {
       deliveryAddress: json['deliveryAddress'] ?? json['delivery_address'] ?? '',
       specialInstructions: json['specialInstructions'] ?? json['special_instructions'],
       paymentMethod: json['paymentMethod'] ?? json['payment_method'],
-      createdAt: json['createdAt'] != null 
+      createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'])
           : json['created_at'] != null
               ? DateTime.parse(json['created_at'])
               : DateTime.now(),
-      updatedAt: json['updatedAt'] != null 
+      updatedAt: json['updatedAt'] != null
           ? DateTime.parse(json['updatedAt'])
           : json['updated_at'] != null
               ? DateTime.parse(json['updated_at'])
@@ -67,9 +67,36 @@ class Order {
               ? DateTime.parse(json['estimated_delivery_time'])
               : null,
       items: json['items'] != null
-          ? (json['items'] as List).map((item) => OrderItem.fromJson(item)).toList()
+          ? (json['items'] as List)
+              .map((item) => OrderItem.fromJson(item))
+              .toList()
           : [],
     );
+  }
+
+  // NEW: Formatted date getter
+  String? get formattedCreatedAt {
+    try {
+      final now = DateTime.now();
+      final diff = now.difference(createdAt);
+
+      if (diff.inDays == 0) {
+        final h = createdAt.hour > 12
+            ? createdAt.hour - 12
+            : (createdAt.hour == 0 ? 12 : createdAt.hour);
+        final m = createdAt.minute.toString().padLeft(2, '0');
+        final period = createdAt.hour >= 12 ? 'PM' : 'AM';
+        return 'Today, $h:$m $period';
+      } else if (diff.inDays == 1) {
+        return 'Yesterday';
+      } else if (diff.inDays < 7) {
+        return '${diff.inDays} days ago';
+      } else {
+        return '${createdAt.day}/${createdAt.month}/${createdAt.year}';
+      }
+    } catch (e) {
+      return null;
+    }
   }
 
   String get statusDisplay {
@@ -111,8 +138,8 @@ class Order {
   }
 
   bool get canCancel {
-    return status.toUpperCase() == 'PENDING' || 
-           status.toUpperCase() == 'CONFIRMED';
+    return status.toUpperCase() == 'PENDING' ||
+        status.toUpperCase() == 'CONFIRMED';
   }
 }
 
@@ -136,14 +163,16 @@ class OrderItem {
   factory OrderItem.fromJson(Map<String, dynamic> json) {
     final price = (json['price'] ?? 0).toDouble();
     final quantity = json['quantity'] ?? 1;
-    
+
     return OrderItem(
       id: json['id'] ?? 0,
       menuItemId: json['menuItemId'] ?? json['menu_item_id'] ?? 0,
       itemName: json['itemName'] ?? json['item_name'] ?? json['name'] ?? '',
       quantity: quantity,
       price: price,
-      totalPrice: (json['totalPrice'] ?? json['total_price'] ?? json['subtotal'] ?? (price * quantity)).toDouble(),
+      totalPrice:
+          (json['totalPrice'] ?? json['total_price'] ?? json['subtotal'] ?? (price * quantity))
+              .toDouble(),
     );
   }
 }

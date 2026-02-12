@@ -49,6 +49,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final canCancel = _order?.canCancel ?? false;
+
     return Scaffold(
       backgroundColor: AppTheme.background,
       appBar: AppBar(
@@ -56,99 +58,121 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
       ),
-      body: _isLoading
-          ? Center(
-              child: CircularProgressIndicator(
-                color: AppTheme.primary,
-              ),
-            )
-          : _error != null
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(32),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.error_outline,
-                          size: 80,
-                          color: AppTheme.error,
-                        ),
-                        const SizedBox(height: 24),
-                        Text(
-                          'Failed to Load Order',
+      body: SafeArea(
+        child: _isLoading
+            ? Center(
+                child: CircularProgressIndicator(
+                  color: AppTheme.primary,
+                ),
+              )
+            : _error != null
+                ? _buildErrorState()
+                : _order == null
+                    ? Center(
+                        child: Text(
+                          'Order not found',
                           style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w600,
-                            color: AppTheme.textPrimary,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          _error!,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 14,
+                            fontSize: 18,
                             color: AppTheme.textSecondary,
                           ),
                         ),
-                        const SizedBox(height: 24),
-                        ElevatedButton(
-                          onPressed: _loadOrderDetails,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppTheme.primary,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 32,
-                              vertical: 14,
-                            ),
-                          ),
-                          child: const Text(
-                            'Retry',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                )
-              : _order == null
-                  ? Center(
-                      child: Text(
-                        'Order not found',
-                        style: TextStyle(
-                          fontSize: 18,
-                          color: AppTheme.textSecondary,
-                        ),
-                      ),
-                    )
-                  : SingleChildScrollView(
-                      child: Column(
-                        children: [
-                          _StatusCard(order: _order!),
-                          const SizedBox(height: 8),
-                          _RestaurantInfo(order: _order!),
-                          const SizedBox(height: 8),
-                          _OrderItems(order: _order!),
-                          const SizedBox(height: 8),
-                          _DeliveryInfo(order: _order!),
-                          const SizedBox(height: 8),
-                          _PriceSummary(order: _order!),
-                          if (_order!.canCancel) ...[
+                      )
+                    : SingleChildScrollView(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: Column(
+                          children: [
+                            _StatusCard(order: _order!),
+                            const SizedBox(height: 8),
+                            _RestaurantInfo(order: _order!),
+                            const SizedBox(height: 8),
+                            _OrderItems(order: _order!),
+                            const SizedBox(height: 8),
+                            _DeliveryInfo(order: _order!),
+                            const SizedBox(height: 8),
+                            _PriceSummary(order: _order!),
                             const SizedBox(height: 16),
-                            _CancelButton(
-                              orderId: _order!.id,
-                              onCancelled: () {
-                                Navigator.pop(context);
-                              },
-                            ),
+                            if (!canCancel)
+                              Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 16),
+                                child: Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: Text(
+                                    _order!.status.toUpperCase() == 'CANCELLED'
+                                        ? 'This order has already been cancelled.'
+                                        : 'You can no longer cancel this order.',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: AppTheme.textSecondary,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            const SizedBox(height: 8),
                           ],
-                          const SizedBox(height: 16),
-                        ],
+                        ),
                       ),
-                    ),
+      ),
+      bottomNavigationBar: _order != null && _order!.canCancel
+          ? _CancelBottomBar(
+              orderId: _order!.id,
+              onCancelled: () {
+                Navigator.pop(context);
+              },
+            )
+          : null,
+    );
+  }
+
+  Widget _buildErrorState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.error_outline,
+              size: 80,
+              color: AppTheme.error,
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Failed to Load Order',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              _error ?? '',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                color: AppTheme.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: _loadOrderDetails,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primary,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
+              ),
+              child: const Text(
+                'Retry',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -162,59 +186,76 @@ class _StatusCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
       decoration: const BoxDecoration(
         color: Colors.white,
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Status Icon
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: order.statusColor.withOpacity(0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              _getStatusIcon(order.status),
-              size: 40,
-              color: order.statusColor,
-            ),
+          // Top row: Order id + created date
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Order #${order.id}',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.textPrimary,
+                ),
+              ),
+              if (order.formattedCreatedAt != null)
+                Text(
+                  order.formattedCreatedAt!,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppTheme.textSecondary,
+                  ),
+                ),
+            ],
           ),
-          
           const SizedBox(height: 16),
-          
-          // Status Badge
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-            decoration: BoxDecoration(
-              color: order.statusColor.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: order.statusColor.withOpacity(0.3),
-                width: 1.5,
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: order.statusColor.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  _getStatusIcon(order.status),
+                  size: 26,
+                  color: order.statusColor,
+                ),
               ),
-            ),
-            child: Text(
-              order.statusDisplay,
-              style: TextStyle(
-                color: order.statusColor,
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      order.statusDisplay,
+                      style: TextStyle(
+                        color: order.statusColor,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _getStatusMessage(order.status),
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppTheme.textSecondary,
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ),
-          
-          const SizedBox(height: 12),
-          
-          // Status Message
-          Text(
-            _getStatusMessage(order.status),
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 14,
-              color: AppTheme.textSecondary,
-            ),
+            ],
           ),
         ],
       ),
@@ -267,6 +308,10 @@ class _RestaurantInfo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final initial = order.restaurantName.isNotEmpty
+        ? order.restaurantName[0].toUpperCase()
+        : 'R';
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
@@ -275,16 +320,15 @@ class _RestaurantInfo extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppTheme.primary.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(
-              Icons.restaurant_rounded,
-              color: AppTheme.primary,
-              size: 28,
+          CircleAvatar(
+            radius: 22,
+            backgroundColor: AppTheme.primary.withOpacity(0.1),
+            child: Text(
+              initial,
+              style: const TextStyle(
+                color: AppTheme.primary,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
           const SizedBox(width: 16),
@@ -295,16 +339,16 @@ class _RestaurantInfo extends StatelessWidget {
                 Text(
                   order.restaurantName,
                   style: const TextStyle(
-                    fontSize: 17,
+                    fontSize: 16,
                     fontWeight: FontWeight.w600,
                     color: AppTheme.textPrimary,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Restaurant',
+                  'Restaurant • ${order.items.length} items',
                   style: TextStyle(
-                    fontSize: 13,
+                    fontSize: 12,
                     color: AppTheme.textSecondary,
                   ),
                 ),
@@ -326,7 +370,7 @@ class _OrderItems extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
       decoration: const BoxDecoration(
         color: Colors.white,
       ),
@@ -336,96 +380,82 @@ class _OrderItems extends StatelessWidget {
           Row(
             children: [
               Icon(
-                Icons.fastfood_outlined,
-                size: 20,
+                Icons.receipt_long,
+                size: 18,
                 color: AppTheme.textSecondary,
               ),
               const SizedBox(width: 8),
               const Text(
-                'Order Items',
+                'Items',
                 style: TextStyle(
-                  fontSize: 18,
+                  fontSize: 16,
                   fontWeight: FontWeight.w600,
                   color: AppTheme.textPrimary,
                 ),
               ),
             ],
           ),
-          
-          const SizedBox(height: 16),
-          
-          ...order.items.asMap().entries.map((entry) {
-            final index = entry.key;
-            final item = entry.value;
-            return Column(
-              children: [
-                if (index > 0) 
-                  Divider(color: AppTheme.border, height: 24),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+          const SizedBox(height: 12),
+          Container(
+            decoration: BoxDecoration(
+              color: AppTheme.surface,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              children: order.items.asMap().entries.map((entry) {
+                final index = entry.key;
+                final item = entry.value;
+                return Column(
                   children: [
-                    // Quantity Badge
-                    Container(
+                    if (index > 0)
+                      Divider(
+                        color: AppTheme.border,
+                        height: 1,
+                        indent: 16,
+                        endIndent: 16,
+                      ),
+                    Padding(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 6,
+                        horizontal: 12,
+                        vertical: 10,
                       ),
-                      decoration: BoxDecoration(
-                        color: AppTheme.surface,
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: AppTheme.border),
-                      ),
-                      child: Text(
-                        '${item.quantity}x',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14,
-                          color: AppTheme.textPrimary,
-                        ),
-                      ),
-                    ),
-                    
-                    const SizedBox(width: 12),
-                    
-                    // Item Name
-                    Expanded(
-                      child: Column(
+                      child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            item.itemName,
+                            '${item.quantity}x',
                             style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w500,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
                               color: AppTheme.textPrimary,
                             ),
                           ),
-                          const SizedBox(height: 4),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              item.itemName,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                color: AppTheme.textPrimary,
+                              ),
+                            ),
+                          ),
                           Text(
-                            'Rs ${item.price.toStringAsFixed(0)} each',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: AppTheme.textSecondary,
+                            'Rs ${item.totalPrice.toStringAsFixed(0)}',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                              color: AppTheme.textPrimary,
                             ),
                           ),
                         ],
                       ),
                     ),
-                    
-                    // Total Price
-                    Text(
-                      'Rs ${item.totalPrice.toStringAsFixed(0)}',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 15,
-                        color: AppTheme.textPrimary,
-                      ),
-                    ),
                   ],
-                ),
-              ],
-            );
-          }).toList(),
+                );
+              }).toList(),
+            ),
+          ),
         ],
       ),
     );
@@ -519,9 +549,7 @@ class _PriceSummary extends StatelessWidget {
               color: AppTheme.textPrimary,
             ),
           ),
-          
           const SizedBox(height: 16),
-          
           _buildPriceRow('Item Total', subtotal),
           const SizedBox(height: 12),
           _buildPriceRow('Delivery Fee', deliveryFee),
@@ -529,12 +557,10 @@ class _PriceSummary extends StatelessWidget {
             const SizedBox(height: 12),
             _buildPriceRow('Taxes & Charges', tax),
           ],
-          
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 16),
             child: Divider(color: AppTheme.border, height: 1),
           ),
-          
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -546,12 +572,20 @@ class _PriceSummary extends StatelessWidget {
                   color: AppTheme.textPrimary,
                 ),
               ),
-              Text(
-                'Rs ${order.totalAmount.toStringAsFixed(0)}',
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.primary,
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppTheme.primary.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  'Rs ${order.totalAmount.toStringAsFixed(0)}',
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.primary,
+                  ),
                 ),
               ),
             ],
@@ -585,36 +619,40 @@ class _PriceSummary extends StatelessWidget {
   }
 }
 
-class _CancelButton extends StatelessWidget {
+class _CancelBottomBar extends StatelessWidget {
   final int orderId;
   final VoidCallback onCancelled;
 
-  const _CancelButton({
+  const _CancelBottomBar({
     required this.orderId,
     required this.onCancelled,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: SizedBox(
-        width: double.infinity,
-        height: 56,
-        child: OutlinedButton(
-          onPressed: () => _showCancelDialog(context),
-          style: OutlinedButton.styleFrom(
-            foregroundColor: AppTheme.error,
-            side: BorderSide(color: AppTheme.error, width: 1.5),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.all(16),
+      child: SafeArea(
+        top: false,
+        child: SizedBox(
+          height: 48,
+          width: double.infinity,
+          child: OutlinedButton(
+            onPressed: () => _showCancelDialog(context),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppTheme.error,
+              side: BorderSide(color: AppTheme.error, width: 1.5),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
-          ),
-          child: const Text(
-            'Cancel Order',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
+            child: const Text(
+              'Cancel Order',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ),
@@ -666,7 +704,7 @@ class _CancelButton extends StatelessWidget {
   Future<void> _cancelOrder(BuildContext context) async {
     try {
       await OrderService().cancelOrder(orderId);
-      
+
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -675,14 +713,16 @@ class _CancelButton extends StatelessWidget {
             behavior: SnackBarBehavior.floating,
           ),
         );
-        
+
         onCancelled();
       }
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to cancel: ${e.toString().replaceAll('Exception: ', '')}'),
+            content: Text(
+              'Failed to cancel: ${e.toString().replaceAll('Exception: ', '')}',
+            ),
             backgroundColor: AppTheme.error,
             behavior: SnackBarBehavior.floating,
           ),

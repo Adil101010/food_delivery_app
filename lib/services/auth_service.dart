@@ -2,29 +2,40 @@ import 'package:dio/dio.dart';
 import '../config/api_config.dart';
 import 'token_manager.dart';
 
-
 class AuthService {
   late final Dio _dio;
-
 
   AuthService() {
     _dio = Dio(BaseOptions(
       baseUrl: ApiConfig.baseUrl,
-      connectTimeout: ApiConfig.connectTimeout,
-      receiveTimeout: ApiConfig.receiveTimeout,
+      connectTimeout: ApiConfig.connectTimeout,      // ✅ 60s
+      receiveTimeout: ApiConfig.receiveTimeout,      // ✅ 60s
+      sendTimeout: ApiConfig.sendTimeout,            // ✅ ADD THIS
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
     ));
     
+    // Add logging in debug mode
     if (ApiConfig.isDebugMode) {
-      print('AuthService initialized');
+      _dio.interceptors.add(LogInterceptor(
+        requestBody: true,
+        responseBody: true,
+        error: true,
+        logPrint: (obj) => print('🌐 $obj'),
+      ));
+      
+      print('🔐 AuthService initialized');
       print('   Base URL: ${ApiConfig.baseUrl}');
       print('   Environment: ${ApiConfig.environment}');
+      print('   Timeout: ${ApiConfig.connectTimeout.inSeconds}s');
     }
   }
 
-
   Future<Map<String, dynamic>> login(String emailOrPhone, String password) async {
     try {
-      print('Login attempt: $emailOrPhone');
+      print('🔑 Login attempt: $emailOrPhone');
 
       final response = await _dio.post(
         '/api/auth/login',
@@ -34,25 +45,27 @@ class AuthService {
         },
       );
 
-      print('Login successful');
+      print('✅ Login successful');
       
       // DEBUG: Print full response
-      print('========================================');
-      print('LOGIN RESPONSE DEBUG');
-      print('========================================');
-      print('Full response: ${response.data}');
-      print('Response type: ${response.data.runtimeType}');
-      if (response.data is Map) {
-        print('Response keys: ${response.data.keys.toList()}');
+      if (ApiConfig.isDebugMode) {
+        print('========================================');
+        print('LOGIN RESPONSE DEBUG');
+        print('========================================');
+        print('Full response: ${response.data}');
+        print('Response type: ${response.data.runtimeType}');
+        if (response.data is Map) {
+          print('Response keys: ${response.data.keys.toList()}');
+        }
+        print('========================================');
       }
-      print('========================================');
 
       if (response.data != null && response.data['accessToken'] != null) {
         final token = response.data['accessToken'];
         final userId = response.data['userId'];
         final email = response.data['email'];
         final phone = response.data['phone'];
-        final userName = email.split('@')[0];
+        final userName = email?.split('@')[0] ?? 'User';
 
         print('========================================');
         print('EXTRACTED DATA');
@@ -121,19 +134,37 @@ class AuthService {
         throw Exception('Invalid login response format');
       }
     } on DioException catch (e) {
-      print('Login error: ${e.message}');
+      print('❌ Login DioError: ${e.type}');
+      print('   Message: ${e.message}');
       
       if (e.response != null) {
+        print('   Response: ${e.response?.data}');
         throw Exception(e.response?.data['message'] ?? 'Login failed');
-      } else if (e.type == DioExceptionType.receiveTimeout || 
-                 e.type == DioExceptionType.connectionTimeout) {
-        throw Exception('Connection timeout. Check backend connection.');
+      } else if (e.type == DioExceptionType.connectionTimeout) {
+        throw Exception(
+          'Connection timeout (${ApiConfig.connectTimeout.inSeconds}s).\n'
+          'Backend: ${ApiConfig.baseUrl}\n'
+          'Check if server is running and phone is on same WiFi.'
+        );
+      } else if (e.type == DioExceptionType.receiveTimeout) {
+        throw Exception(
+          'Server response timeout (${ApiConfig.receiveTimeout.inSeconds}s).\n'
+          'Server is taking too long to respond.'
+        );
+      } else if (e.type == DioExceptionType.connectionError) {
+        throw Exception(
+          'Cannot connect to server.\n'
+          'URL: ${ApiConfig.baseUrl}\n'
+          'Check network and firewall settings.'
+        );
       } else {
-        throw Exception('Network error. Check your connection.');
+        throw Exception('Network error: ${e.message}');
       }
+    } catch (e) {
+      print('❌ Unexpected error: $e');
+      rethrow;
     }
   }
-
 
   Future<Map<String, dynamic>> register(
     String name,
@@ -142,7 +173,7 @@ class AuthService {
     String password,
   ) async {
     try {
-      print('Register attempt: $email');
+      print('📝 Register attempt: $email');
 
       final response = await _dio.post(
         '/api/auth/register',
@@ -155,7 +186,7 @@ class AuthService {
         },
       );
 
-      print('Registration successful');
+      print('✅ Registration successful');
 
       if (response.data != null && response.data['accessToken'] != null) {
         final token = response.data['accessToken'];
@@ -188,24 +219,27 @@ class AuthService {
         throw Exception('Invalid registration response format');
       }
     } on DioException catch (e) {
-      print('Registration error: ${e.message}');
+      print('❌ Registration error: ${e.message}');
       
       if (e.response != null) {
         throw Exception(e.response?.data['message'] ?? 'Registration failed');
+      } else if (e.type == DioExceptionType.connectionTimeout) {
+        throw Exception('Connection timeout. Check backend connection.');
       } else {
         throw Exception('Network error. Check your connection.');
       }
+    } catch (e) {
+      print('❌ Unexpected registration error: $e');
+      rethrow;
     }
   }
-
 
   Future<bool> isLoggedIn() async {
     return await TokenManager.isLoggedIn();
   }
 
-
   Future<void> logout() async {
     await TokenManager.clearAuthData();
-    print('Logged out successfully');
+    print('👋 Logged out successfully');
   }
 }

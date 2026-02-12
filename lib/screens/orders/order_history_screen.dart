@@ -17,6 +17,10 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
   bool _isLoading = true;
   String? _error;
 
+  // Filters
+  final List<String> _filters = ['All', 'Ongoing', 'Completed', 'Cancelled'];
+  String _selectedFilter = 'All';
+
   @override
   void initState() {
     super.initState();
@@ -28,10 +32,13 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
       _isLoading = true;
       _error = null;
     });
-    
+
     try {
       final orders = await _orderService.getUserOrders();
-      
+
+      // Sort by createdAt DESC (latest first)
+      orders.sort((a, b) => b.createdAt.compareTo(a.createdAt)); // [web:55][web:64]
+
       if (mounted) {
         setState(() {
           _orders = orders;
@@ -39,8 +46,6 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
         });
       }
     } catch (e) {
-      print('Error loading orders: $e');
-      
       if (mounted) {
         setState(() {
           _error = e.toString().replaceAll('Exception: ', '');
@@ -50,8 +55,29 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
     }
   }
 
+  List<Order> get _filteredOrders {
+    switch (_selectedFilter) {
+      case 'Ongoing':
+        return _orders.where((o) {
+          final s = o.status.toUpperCase();
+          return s == 'PENDING' ||
+              s == 'CONFIRMED' ||
+              s == 'PREPARING' ||
+              s == 'OUT_FOR_DELIVERY';
+        }).toList();
+      case 'Completed':
+        return _orders.where((o) => o.status.toUpperCase() == 'DELIVERED').toList();
+      case 'Cancelled':
+        return _orders.where((o) => o.status.toUpperCase() == 'CANCELLED').toList();
+      default:
+        return _orders;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final filtered = _filteredOrders;
+
     return Scaffold(
       backgroundColor: AppTheme.background,
       appBar: AppBar(
@@ -66,146 +92,24 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
               ),
             )
           : _error != null
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(32),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.error_outline,
-                          size: 80,
-                          color: AppTheme.error,
-                        ),
-                        const SizedBox(height: 24),
-                        Text(
-                          'Failed to Load Orders',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w600,
-                            color: AppTheme.textPrimary,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          _error!,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: AppTheme.textSecondary,
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-                        ElevatedButton(
-                          onPressed: _loadOrders,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppTheme.primary,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 32,
-                              vertical: 14,
-                            ),
-                          ),
-                          child: const Text(
-                            'Retry',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                )
+              ? _buildErrorState()
               : _orders.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.receipt_long_outlined,
-                            size: 100,
-                            color: AppTheme.textLight,
-                          ),
-                          const SizedBox(height: 24),
-                          Text(
-                            'No orders yet',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w600,
-                              color: AppTheme.textSecondary,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Start ordering delicious food',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: AppTheme.textLight,
-                            ),
-                          ),
-                          const SizedBox(height: 32),
-                          ElevatedButton(
-                            onPressed: () => Navigator.pop(context),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppTheme.primary,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 32,
-                                vertical: 14,
-                              ),
-                            ),
-                            child: const Text(
-                              'Browse Restaurants',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
+                  ? _buildEmptyState()
                   : RefreshIndicator(
                       onRefresh: _loadOrders,
                       color: AppTheme.primary,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Header
-                          Container(
-                            padding: const EdgeInsets.all(16),
-                            color: Colors.white,
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  '${_orders.length} Orders',
-                                  style: const TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppTheme.textPrimary,
-                                  ),
-                                ),
-                                IconButton(
-                                  icon: const Icon(
-                                    Icons.refresh,
-                                    color: AppTheme.textSecondary,
-                                  ),
-                                  onPressed: _loadOrders,
-                                ),
-                              ],
-                            ),
-                          ),
-                          
+                          _buildHeaderAndFilters(filtered.length),
                           const SizedBox(height: 8),
-                          
-                          // Orders List
                           Expanded(
                             child: ListView.builder(
-                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                              itemCount: _orders.length,
+                              padding:
+                                  const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                              itemCount: filtered.length,
                               itemBuilder: (context, index) {
-                                final order = _orders[index];
+                                final order = filtered[index];
                                 return _OrderCard(
                                   order: order,
                                   onTap: () => _navigateToOrderDetail(order),
@@ -216,6 +120,188 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                         ],
                       ),
                     ),
+    );
+  }
+
+  Widget _buildErrorState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.error_outline,
+              size: 80,
+              color: AppTheme.error,
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Failed to Load Orders',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              _error!,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                color: AppTheme.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: _loadOrders,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primary,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
+              ),
+              child: const Text(
+                'Retry',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.receipt_long_outlined,
+              size: 100,
+              color: AppTheme.textLight,
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'No orders yet',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Start ordering delicious food',
+              style: TextStyle(
+                fontSize: 14,
+                color: AppTheme.textLight,
+              ),
+            ),
+            const SizedBox(height: 32),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primary,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
+              ),
+              child: const Text(
+                'Browse Restaurants',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeaderAndFilters(int filteredCount) {
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Top row: count + refresh
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '$filteredCount Orders',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.textPrimary,
+                ),
+              ),
+              IconButton(
+                icon: const Icon(
+                  Icons.refresh,
+                  color: AppTheme.textSecondary,
+                ),
+                onPressed: _loadOrders,
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          // Filter chips row
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: _filters.map((f) {
+                final bool isSelected = _selectedFilter == f;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: ChoiceChip(
+                    label: Text(
+                      f,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight:
+                            isSelected ? FontWeight.w600 : FontWeight.w400,
+                      ),
+                    ),
+                    selected: isSelected,
+                    selectedColor: AppTheme.primary.withOpacity(0.15),
+                    backgroundColor: AppTheme.surface,
+                    labelStyle: TextStyle(
+                      color: isSelected
+                          ? AppTheme.primary
+                          : AppTheme.textSecondary,
+                    ),
+                    onSelected: (val) {
+                      if (val) {
+                        setState(() {
+                          _selectedFilter = f;
+                        });
+                      }
+                    },
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      side: BorderSide(
+                        color: isSelected
+                            ? AppTheme.primary
+                            : AppTheme.border,
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -272,9 +358,7 @@ class _OrderCard extends StatelessWidget {
                       size: 24,
                     ),
                   ),
-                  
                   const SizedBox(width: 12),
-                  
                   // Restaurant Info
                   Expanded(
                     child: Column(
@@ -301,7 +385,6 @@ class _OrderCard extends StatelessWidget {
                       ],
                     ),
                   ),
-                  
                   // Status Badge
                   Container(
                     padding: const EdgeInsets.symmetric(
@@ -326,9 +409,7 @@ class _OrderCard extends StatelessWidget {
                   ),
                 ],
               ),
-              
               const SizedBox(height: 12),
-              
               // Items Summary
               Container(
                 padding: const EdgeInsets.all(10),
@@ -369,9 +450,7 @@ class _OrderCard extends StatelessWidget {
                   ],
                 ),
               ),
-              
               const SizedBox(height: 12),
-              
               // Bottom Row - Price & Action
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -397,8 +476,6 @@ class _OrderCard extends StatelessWidget {
                       ),
                     ],
                   ),
-                  
-                  // View Details Button
                   TextButton(
                     onPressed: onTap,
                     style: TextButton.styleFrom(
@@ -445,9 +522,10 @@ class _OrderCard extends StatelessWidget {
     final difference = now.difference(date);
 
     if (difference.inDays == 0) {
-      final hour = date.hour > 12 ? date.hour - 12 : date.hour;
+      final h = date.hour > 12 ? date.hour - 12 : (date.hour == 0 ? 12 : date.hour);
+      final m = date.minute.toString().padLeft(2, '0');
       final period = date.hour >= 12 ? 'PM' : 'AM';
-      return 'Today, $hour:${date.minute.toString().padLeft(2, '0')} $period';
+      return 'Today, $h:$m $period';
     } else if (difference.inDays == 1) {
       return 'Yesterday';
     } else if (difference.inDays < 7) {

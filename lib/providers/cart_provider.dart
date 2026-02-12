@@ -19,12 +19,47 @@ class CartProvider with ChangeNotifier {
   
   bool get hasCart => _items.isNotEmpty;
   
-  double get totalAmount => _items.fold(
+  bool get isEmpty => _items.isEmpty;
+
+  // ✅ ADDED: Subtotal calculation
+  double get subtotal => _items.fold(
     0.0,
     (sum, item) => sum + (item.price * item.quantity),
   );
 
-  bool get isEmpty => _items.isEmpty;
+  // ✅ ADDED: Delivery fee (can be dynamic based on restaurant)
+  double get deliveryFee {
+    if (_items.isEmpty) return 0.0;
+    if (subtotal >= 199) return 0.0; // Free delivery above ₹199
+    return 40.0; // Default delivery fee
+  }
+
+  // ✅ ADDED: Tax calculation (5% GST)
+  double get tax {
+    return subtotal * 0.05;
+  }
+
+  // ✅ ADDED: Discount (can be from coupon code)
+  double get discount => 0.0; // Add coupon logic later
+
+  // ✅ UPDATED: Total amount with all calculations
+  double get total {
+    return subtotal + deliveryFee + tax - discount;
+  }
+
+  // ✅ LEGACY: Keep old totalAmount for backward compatibility
+  double get totalAmount => total;
+
+  // ✅ ADDED: Get restaurant info from cart
+  String? get restaurantName {
+    if (_items.isEmpty) return null;
+    return _items.first.restaurantName;
+  }
+
+  int? get restaurantId {
+    if (_items.isEmpty) return null;
+    return _items.first.restaurantId;
+  }
 
   int getItemQuantity(int menuItemId) {
     try {
@@ -45,6 +80,8 @@ class CartProvider with ChangeNotifier {
       _items = await _cartService.getCartItems();
       _error = null;
       print('CartProvider: Cart loaded with ${_items.length} items');
+      print('CartProvider: Subtotal: ₹${subtotal.toStringAsFixed(2)}');
+      print('CartProvider: Total: ₹${total.toStringAsFixed(2)}');
     } catch (e) {
       _error = e.toString();
       print('CartProvider: Failed to load cart - $e');
@@ -66,6 +103,16 @@ class CartProvider with ChangeNotifier {
   }) async {
     try {
       print('CartProvider: Adding $itemName to cart');
+      
+      // Check if cart has items from different restaurant
+      if (_items.isNotEmpty && restaurantId != null) {
+        final existingRestaurantId = _items.first.restaurantId;
+        if (existingRestaurantId != null && existingRestaurantId != restaurantId) {
+          _error = 'Cannot add items from different restaurants';
+          notifyListeners();
+          return false;
+        }
+      }
       
       await _cartService.addToCart(
         menuItemId: menuItemId,
@@ -173,5 +220,44 @@ class CartProvider with ChangeNotifier {
       notifyListeners();
       rethrow;
     }
+  }
+
+  // ✅ ADDED: Apply coupon code (for future use)
+  Future<bool> applyCoupon(String couponCode) async {
+    // TODO: Implement coupon logic with backend
+    print('CartProvider: Applying coupon $couponCode');
+    notifyListeners();
+    return false;
+  }
+
+  // ✅ ADDED: Get cart summary
+  Map<String, dynamic> getCartSummary() {
+    return {
+      'items': _items.length,
+      'totalItems': totalItems,
+      'subtotal': subtotal,
+      'deliveryFee': deliveryFee,
+      'tax': tax,
+      'discount': discount,
+      'total': total,
+      'restaurantName': restaurantName,
+      'restaurantId': restaurantId,
+    };
+  }
+
+  // ✅ ADDED: Print cart summary for debugging
+  void printSummary() {
+    print('═══════════════════════════════════');
+    print('CART SUMMARY');
+    print('═══════════════════════════════════');
+    print('Restaurant: $restaurantName');
+    print('Items: ${_items.length}');
+    print('Total Items: $totalItems');
+    print('Subtotal: ₹${subtotal.toStringAsFixed(2)}');
+    print('Delivery Fee: ₹${deliveryFee.toStringAsFixed(2)}');
+    print('Tax (5%): ₹${tax.toStringAsFixed(2)}');
+    print('Discount: ₹${discount.toStringAsFixed(2)}');
+    print('Total: ₹${total.toStringAsFixed(2)}');
+    print('═══════════════════════════════════');
   }
 }

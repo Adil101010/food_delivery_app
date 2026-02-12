@@ -17,6 +17,23 @@ class AppTheme {
   static const Color success = Color(0xFF60B246);
   static const Color rating = Color(0xFF48C479);
   static const Color discount = Color(0xFFDB7A23);
+
+  // MaterialColor Swatch for primary color
+  static const MaterialColor primarySwatch = MaterialColor(
+    0xFFFC8019,
+    <int, Color>{
+      50: Color(0xFFFFF3E7),
+      100: Color(0xFFFFE0C3),
+      200: Color(0xFFFFCC9C),
+      300: Color(0xFFFFB874),
+      400: Color(0xFFFFA856),
+      500: Color(0xFFFC8019), // primary
+      600: Color(0xFFE67316), // primaryDark
+      700: Color(0xFFD06613),
+      800: Color(0xFFBA5910),
+      900: Color(0xFFA04C0D),
+    },
+  );
   
   // Gradients
   static const LinearGradient primaryGradient = LinearGradient(

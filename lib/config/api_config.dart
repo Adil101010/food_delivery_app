@@ -8,7 +8,7 @@ class ApiConfig {
   static const String ANDROID_EMULATOR = 'http://10.0.2.2:8080';
   
   // Your PC's local IP (update this with your actual IP)
-  static const String LOCAL_NETWORK = 'http://192.168.0.100:8080';  // ✅ Fixed
+  static const String LOCAL_NETWORK = 'http://192.168.0.100:8080';  // ✅ Check IP
   
   // Production server (when deployed)
   static const String PRODUCTION = 'https://your-api.com';
@@ -30,9 +30,10 @@ class ApiConfig {
     }
   }
   
-  // Timeouts
-  static const Duration connectTimeout = Duration(seconds: 30);
-  static const Duration receiveTimeout = Duration(seconds: 30);
+  // Timeouts - INCREASED TO 60 SECONDS
+  static const Duration connectTimeout = Duration(seconds: 60); // ✅ 30 → 60
+  static const Duration receiveTimeout = Duration(seconds: 60); // ✅ 30 → 60
+  static const Duration sendTimeout = Duration(seconds: 60);    // ✅ ADD THIS
   
   // Debug mode
   static const bool isDebugMode = true;
