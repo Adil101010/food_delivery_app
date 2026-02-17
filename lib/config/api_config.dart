@@ -8,7 +8,7 @@ class ApiConfig {
   static const String ANDROID_EMULATOR = 'http://10.0.2.2:8080';
   
   // Your PC's local IP (update this with your actual IP)
-  static const String LOCAL_NETWORK = 'http://192.168.0.100:8080';  // ✅ Check IP
+  static const String LOCAL_NETWORK = 'http://192.168.0.124:8080';  // ✅ Check IP
   
   // Production server (when deployed)
   static const String PRODUCTION = 'https://your-api.com';

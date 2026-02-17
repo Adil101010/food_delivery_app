@@ -299,9 +299,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             title: 'Favorites',
             subtitle: 'Your favorite restaurants',
             onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Coming soon!')),
-              );
+              Navigator.pushNamed(context, '/favorites');
             },
           ),
         ],

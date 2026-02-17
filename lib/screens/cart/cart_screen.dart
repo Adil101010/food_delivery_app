@@ -1,7 +1,14 @@
+// lib/screens/cart/cart_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import '../../config/app_theme.dart';
+import '../../config/api_config.dart';
 import '../../providers/cart_provider.dart';
+import '../../services/token_manager.dart';
+import '../payment/payment_screen.dart';
 
 class CartScreen extends StatefulWidget {
   const CartScreen({Key? key}) : super(key: key);
@@ -11,6 +18,8 @@ class CartScreen extends StatefulWidget {
 }
 
 class _CartScreenState extends State<CartScreen> {
+  bool _isProcessingOrder = false;
+
   @override
   void initState() {
     super.initState();
@@ -19,45 +28,241 @@ class _CartScreenState extends State<CartScreen> {
     });
   }
 
+  Future<void> _proceedToCheckout() async {
+    // Get cart provider
+    final cart = Provider.of<CartProvider>(context, listen: false);
+    
+    setState(() => _isProcessingOrder = true);
+
+    try {
+      final userId = await TokenManager.getUserId();
+      final userEmail = await TokenManager.getUserEmail() ?? '';
+      final userPhone = await TokenManager.getUserPhone() ?? '';
+      final userName = await TokenManager.getUserName() ?? '';
+
+      if (userId == null) {
+        throw Exception('User not logged in');
+      }
+
+      print('📋 Order Details:');
+      print('   UserId: $userId');
+      print('   RestaurantId: ${cart.restaurantId}');
+      print('   RestaurantName: ${cart.restaurantName}');
+      print('   UserEmail: $userEmail');
+      print('   UserPhone: $userPhone');
+
+      // Create order data
+      final orderData = {
+        'userId': userId,
+        'restaurantId': cart.restaurantId,
+        'restaurantName': cart.restaurantName,
+        'items': cart.items.map((item) => {
+          'menuItemId': item.menuItemId,
+          'itemName': item.itemName,
+          'quantity': item.quantity,
+          'price': item.price,
+        }).toList(),
+        'deliveryFee': cart.deliveryFee,
+        'discount': cart.discount,
+        'paymentMethod': 'CASH_ON_DELIVERY',
+        'deliveryAddress': 'Default Address, New Delhi, India',
+        'deliveryInstructions': 'Please call before delivery',
+        'customerPhone': userPhone,
+        'customerName': userName,
+        'customerEmail': userEmail,
+      };
+
+      print('📤 Creating order: $orderData');
+
+      final response = await http.post(
+        Uri.parse('${ApiConfig.baseUrl}/api/orders'),
+        headers: {
+          'Authorization': 'Bearer ${await TokenManager.getToken()}',
+          'Content-Type': 'application/json',
+        },
+        body: json.encode(orderData),
+      ).timeout(const Duration(seconds: 30));
+
+      print('📥 Order response: ${response.statusCode}');
+      print('📦 Response body: ${response.body}');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final orderResponse = json.decode(response.body);
+        
+        print('📦 Full response structure: $orderResponse');
+        
+        // Extract order and payment details
+        int? orderId;
+        String? razorpayOrderId;
+        String? razorpayKeyId;
+        
+        // Try data.order.id first (actual response structure)
+        if (orderResponse['data'] != null && 
+            orderResponse['data']['order'] != null &&
+            orderResponse['data']['order']['id'] != null) {
+          orderId = orderResponse['data']['order']['id'];
+          print('✅ Found orderId in data.order.id: $orderId');
+          
+          // Extract payment details from same response
+          if (orderResponse['data']['payment'] != null) {
+            razorpayOrderId = orderResponse['data']['payment']['razorpayOrderId'];
+            razorpayKeyId = orderResponse['data']['payment']['keyId'];
+            print('✅ Found payment details:');
+            print('   Razorpay OrderId: $razorpayOrderId');
+            print('   Razorpay KeyId: $razorpayKeyId');
+          }
+        }
+        // Try data.id
+        else if (orderResponse['data'] != null && 
+                 orderResponse['data']['id'] != null) {
+          orderId = orderResponse['data']['id'];
+          print('✅ Found orderId in data.id: $orderId');
+        }
+        // Try id directly
+        else if (orderResponse['id'] != null) {
+          orderId = orderResponse['id'];
+          print('✅ Found orderId in id: $orderId');
+        }
+
+        if (orderId == null) {
+          print('❌ Could not find orderId in response');
+          print('📦 Response keys: ${orderResponse.keys}');
+          if (orderResponse['data'] != null) {
+            print('📦 Data keys: ${orderResponse['data'].keys}');
+            if (orderResponse['data']['order'] != null) {
+              print('📦 Order keys: ${orderResponse['data']['order'].keys}');
+            }
+          }
+          throw Exception('Order ID not found in response');
+        }
+
+        print('✅ Order created successfully! OrderId: $orderId');
+
+        setState(() => _isProcessingOrder = false);
+
+        // Navigate to payment screen with razorpay details
+        final result = await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => PaymentScreen(
+              orderId: orderId!,
+              totalAmount: cart.total,
+              razorpayOrderId: razorpayOrderId,  // Pass razorpay order id
+              razorpayKeyId: razorpayKeyId,      // Pass razorpay key id
+            ),
+          ),
+        );
+
+        if (result == true) {
+          // Payment successful, clear cart
+          cart.clearCart();
+          
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Row(
+                  children: const [
+                    Icon(Icons.check_circle, color: Colors.white),
+                    SizedBox(width: 12),
+                    Text('Order placed successfully!'),
+                  ],
+                ),
+                backgroundColor: AppTheme.success,
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            );
+            // Navigate to orders screen
+            Navigator.pushReplacementNamed(context, '/orders');
+          }
+        }
+      } else {
+        final errorData = json.decode(response.body);
+        throw Exception(errorData['message'] ?? 'Failed to create order');
+      }
+    } catch (e) {
+      setState(() => _isProcessingOrder = false);
+      print('❌ Error creating order: $e');
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.error, color: Colors.white),
+                const SizedBox(width: 12),
+                Expanded(child: Text('Failed to create order: $e')),
+              ],
+            ),
+            backgroundColor: AppTheme.error,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
       appBar: _buildAppBar(),
-      body: Consumer<CartProvider>(
-        builder: (context, cart, child) {
-          if (cart.isLoading) {
-            return const Center(
-              child: CircularProgressIndicator(color: AppTheme.primary),
-            );
-          }
-
-          if (cart.error != null) {
-            return _buildErrorState(cart);
-          }
-
-          if (cart.isEmpty) {
-            return _buildEmptyState();
-          }
-
-          return Column(
-            children: [
-              _buildRestaurantHeader(cart),
-              Expanded(
-                child: ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: cart.items.length,
-                  itemBuilder: (context, index) {
-                    final item = cart.items[index];
-                    return _CartItemCard(item: item, index: index);
-                  },
-                ),
+      body: _isProcessingOrder
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const CircularProgressIndicator(color: AppTheme.primary),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Creating your order...',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: AppTheme.textSecondary,
+                    ),
+                  ),
+                ],
               ),
-              _CartSummary(),
-            ],
-          );
-        },
-      ),
+            )
+          : Consumer<CartProvider>(
+              builder: (context, cart, child) {
+                if (cart.isLoading) {
+                  return const Center(
+                    child: CircularProgressIndicator(color: AppTheme.primary),
+                  );
+                }
+
+                if (cart.error != null) {
+                  return _buildErrorState(cart);
+                }
+
+                if (cart.isEmpty) {
+                  return _buildEmptyState();
+                }
+
+                return Column(
+                  children: [
+                    _buildRestaurantHeader(cart),
+                    Expanded(
+                      child: ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: cart.items.length,
+                        itemBuilder: (context, index) {
+                          final item = cart.items[index];
+                          return _CartItemCard(item: item, index: index);
+                        },
+                      ),
+                    ),
+                    _CartSummary(onCheckout: _proceedToCheckout),
+                  ],
+                );
+              },
+            ),
     );
   }
 
@@ -410,7 +615,6 @@ class _CartItemCard extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Item Image
               Stack(
                 children: [
                   ClipRRect(
@@ -453,7 +657,6 @@ class _CartItemCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(width: 12),
-              // Item Details
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -514,7 +717,6 @@ class _CartItemCard extends StatelessWidget {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        // Quantity Controls
                         Container(
                           decoration: BoxDecoration(
                             color: AppTheme.primary,
@@ -569,7 +771,6 @@ class _CartItemCard extends StatelessWidget {
                             ],
                           ),
                         ),
-                        // Item Total Price
                         Text(
                           '₹${item.totalPrice.toStringAsFixed(0)}',
                           style: const TextStyle(
@@ -613,11 +814,15 @@ class _PlaceholderImage extends StatelessWidget {
 }
 
 class _CartSummary extends StatelessWidget {
+  final VoidCallback onCheckout;
+
+  const _CartSummary({required this.onCheckout});
+
   @override
   Widget build(BuildContext context) {
     return Consumer<CartProvider>(
       builder: (context, cart, child) {
-        cart.printSummary(); // Debug log
+        cart.printSummary();
 
         return Container(
           decoration: BoxDecoration(
@@ -640,7 +845,6 @@ class _CartSummary extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Bill Details Header
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -734,9 +938,7 @@ class _CartSummary extends StatelessWidget {
                       width: double.infinity,
                       height: 56,
                       child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.pushNamed(context, '/checkout');
-                        },
+                        onPressed: onCheckout,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.transparent,
                           shadowColor: Colors.transparent,

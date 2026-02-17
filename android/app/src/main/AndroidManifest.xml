@@ -1,10 +1,22 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <application
     
-    android:label="food_delivery_app"
-    android:name="${applicationName}"
-    android:icon="@mipmap/ic_launcher"
-    android:usesCleartextTraffic="true">
+    <!-- ADD THESE PERMISSIONS AT TOP -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION"/>
+    <uses-permission android:name="android.permission.CALL_PHONE"/>
+    
+    <application
+        android:label="food_delivery_app"
+        android:name="${applicationName}"
+        android:icon="@mipmap/ic_launcher"
+        android:usesCleartextTraffic="true">
+
+        <!-- ADD GOOGLE MAPS API KEY HERE -->
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="AIzaSyDEVELOPMENT_KEY_HERE"/>
 
         <activity
             android:name=".MainActivity"
@@ -43,6 +55,15 @@
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
+        </intent>
+        <!-- ADD THESE FOR PHONE CALLS AND MAPS -->
+        <intent>
+            <action android:name="android.intent.action.DIAL" />
+            <data android:scheme="tel" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="geo" />
         </intent>
     </queries>
 </manifest>

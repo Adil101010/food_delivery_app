@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import '../config/api_config.dart';
 import 'token_manager.dart';
+import 'package:shared_preferences/shared_preferences.dart'; 
 
 class AuthService {
   late final Dio _dio;
@@ -8,9 +9,9 @@ class AuthService {
   AuthService() {
     _dio = Dio(BaseOptions(
       baseUrl: ApiConfig.baseUrl,
-      connectTimeout: ApiConfig.connectTimeout,      // ✅ 60s
-      receiveTimeout: ApiConfig.receiveTimeout,      // ✅ 60s
-      sendTimeout: ApiConfig.sendTimeout,            // ✅ ADD THIS
+      connectTimeout: ApiConfig.connectTimeout,      
+      receiveTimeout: ApiConfig.receiveTimeout,      
+      sendTimeout: ApiConfig.sendTimeout,            
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
@@ -234,9 +235,22 @@ class AuthService {
     }
   }
 
-  Future<bool> isLoggedIn() async {
-    return await TokenManager.isLoggedIn();
-  }
+  // Future<bool> isLoggedIn() async {
+  //   return await TokenManager.isLoggedIn();
+  // }
+
+   Future<bool> isLoggedIn() async {
+  final prefs = await SharedPreferences.getInstance();
+  final token = prefs.getString('auth_token');
+  final userId = prefs.getInt('user_id');
+  
+  print('🔍 Auth Check:');
+  print('   Token exists: ${token != null}');
+  print('   User ID: $userId');
+  
+  return token != null && userId != null;
+}
+
 
   Future<void> logout() async {
     await TokenManager.clearAuthData();

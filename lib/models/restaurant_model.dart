@@ -16,6 +16,7 @@ class Restaurant {
   final bool isOpen;
   final String openingTime;
   final String closingTime;
+  final String? imageUrl;
 
   Restaurant({
     required this.id,
@@ -35,6 +36,7 @@ class Restaurant {
     required this.isOpen,
     required this.openingTime,
     required this.closingTime,
+    this.imageUrl,
   });
 
   factory Restaurant.fromJson(Map<String, dynamic> json) {
@@ -50,14 +52,55 @@ class Restaurant {
       email: json['email'] ?? '',
       cuisine: json['cuisine'] ?? 'Multi-cuisine',
       rating: (json['rating'] ?? 0.0).toDouble(),
-      avgDeliveryTime: json['avgDeliveryTime'],
+      
+      // Handle both camelCase and snake_case for avgDeliveryTime
+      avgDeliveryTime: json['avgDeliveryTime'] ?? 
+                       json['avg_delivery_time'] ?? 
+                       json['deliveryTime'] ?? 
+                       json['delivery_time'],
+      
+      // Handle both camelCase and snake_case for deliveryFee
       deliveryFee: json['deliveryFee'] != null 
           ? (json['deliveryFee']).toDouble() 
-          : null,
-      isActive: json['isActive'] ?? true,
-      isOpen: json['isOpen'] ?? false,
-      openingTime: json['openingTime'] ?? '09:00:00',
-      closingTime: json['closingTime'] ?? '23:00:00',
+          : (json['delivery_fee'] != null 
+              ? (json['delivery_fee']).toDouble() 
+              : null),
+      
+      // Handle both camelCase and snake_case for isActive
+      isActive: json['isActive'] ?? json['is_active'] ?? true,
+      
+      // Handle both camelCase and snake_case for isOpen
+      isOpen: json['isOpen'] ?? json['is_open'] ?? false,
+      
+      // Handle both camelCase and snake_case for times
+      openingTime: json['openingTime'] ?? json['opening_time'] ?? '09:00:00',
+      closingTime: json['closingTime'] ?? json['closing_time'] ?? '23:00:00',
+      
+      // Handle both camelCase and snake_case for imageUrl
+      imageUrl: json['imageUrl'] ?? json['image_url'],
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'description': description,
+      'address': address,
+      'city': city,
+      'state': state,
+      'pincode': pincode,
+      'phone': phone,
+      'email': email,
+      'cuisine': cuisine,
+      'rating': rating,
+      'avgDeliveryTime': avgDeliveryTime,
+      'deliveryFee': deliveryFee,
+      'isActive': isActive,
+      'isOpen': isOpen,
+      'openingTime': openingTime,
+      'closingTime': closingTime,
+      'imageUrl': imageUrl,
+    };
   }
 }

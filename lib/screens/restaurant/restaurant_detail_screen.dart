@@ -6,6 +6,7 @@ import '../../services/api_service.dart';
 import 'package:provider/provider.dart';
 import '../../providers/cart_provider.dart';
 import '../cart/cart_screen.dart';
+import '../reviews/restaurant_reviews_screen.dart';  
 
 class RestaurantDetailScreen extends StatefulWidget {
   final Restaurant restaurant;
@@ -84,6 +85,7 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen> {
             slivers: [
               _buildAppBar(),
               _buildRestaurantInfo(),
+              _buildReviewsSection(),  // ✅ NEW - Reviews section
               _buildOffersSection(),
               _buildDivider(),
               _buildCategoryFilter(),
@@ -343,6 +345,92 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  // ✅ NEW - Reviews Section
+  Widget _buildReviewsSection() {
+    return SliverToBoxAdapter(
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFE0E0E0)),
+        ),
+        child: InkWell(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => RestaurantReviewsScreen(
+                  restaurantId: widget.restaurant.id,
+                  restaurantName: widget.restaurant.name,
+                ),
+              ),
+            );
+          },
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.star,
+                    color: Colors.amber,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Reviews & Ratings',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          const Icon(Icons.star, color: Colors.amber, size: 16),
+                          const SizedBox(width: 4),
+                          Text(
+                            widget.restaurant.rating.toStringAsFixed(1),
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: AppTheme.textPrimary,
+                            ),
+                          ),
+                          Text(
+                            ' • See all reviews',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppTheme.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.arrow_forward_ios, size: 14, color: AppTheme.primary),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
