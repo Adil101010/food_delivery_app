@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
 import '../../config/app_theme.dart';
+import '../orders/order_tracking_screen.dart';
 
 class OrderConfirmationScreen extends StatefulWidget {
   final dynamic orderId;
@@ -562,84 +563,130 @@ class _OrderConfirmationScreenState extends State<OrderConfirmationScreen>
     );
   }
 
-  Widget _buildActionButtons() {
-    return AnimatedBuilder(
-      animation: _slideAnimation,
-      builder: (context, child) {
-        return Transform.translate(
-          offset: Offset(0, _slideAnimation.value * 2.5),
-          child: Opacity(
-            opacity: _fadeAnimation.value,
-            child: child,
-          ),
-        );
-      },
-      child: Row(
-        children: [
-          Expanded(
-            child: OutlinedButton(
+ Widget _buildActionButtons() {
+  final orderId = int.tryParse(widget.orderId.toString()) ?? 0;
+
+  return AnimatedBuilder(
+    animation: _slideAnimation,
+    builder: (context, child) {
+      return Transform.translate(
+        offset: Offset(0, _slideAnimation.value * 2.5),
+        child: Opacity(
+          opacity: _fadeAnimation.value,
+          child: child,
+        ),
+      );
+    },
+    child: Column(
+      children: [
+        // ✅ PRIMARY — Track My Order (full width)
+        SizedBox(
+          width: double.infinity,
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [AppTheme.primary, AppTheme.primary.withOpacity(0.8)],
+              ),
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: AppTheme.primary.withOpacity(0.3),
+                  blurRadius: 12,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: ElevatedButton.icon(
               onPressed: () {
-                Navigator.of(context).popUntil((route) => route.isFirst);
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => OrderTrackingScreen(orderId: orderId),
+                  ),
+                  (route) => route.isFirst,
+                );
               },
-              style: OutlinedButton.styleFrom(
+              icon: const Icon(Icons.location_on, size: 20),
+              label: const Text(
+                'Track My Order',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.transparent,
+                shadowColor: Colors.transparent,
+                foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 16),
-                side: BorderSide(color: AppTheme.primary, width: 2),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              child: const Text(
-                'Go to Home',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: AppTheme.primary,
-                ),
-              ),
             ),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [AppTheme.primary, AppTheme.primary.withOpacity(0.8)],
-                ),
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppTheme.primary.withOpacity(0.3),
-                    blurRadius: 12,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
-              ),
-              child: ElevatedButton(
+        ),
+
+        const SizedBox(height: 12),
+
+        // ✅ SECONDARY — Go Home + View Orders
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton(
                 onPressed: () {
-                  Navigator.pushNamed(context, '/orders');
+                  Navigator.of(context).popUntil((route) => route.isFirst);
                 },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.transparent,
-                  shadowColor: Colors.transparent,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  side: BorderSide(color: AppTheme.primary, width: 2),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
                 child: const Text(
-                  'View Orders',
+                  'Go Home',
                   style: TextStyle(
-                    fontSize: 16,
+                    fontSize: 15,
                     fontWeight: FontWeight.w700,
+                    color: AppTheme.primary,
                   ),
                 ),
               ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
+            const SizedBox(width: 12),
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.pushNamedAndRemoveUntil(
+                    context,
+                    '/orders',
+                    (route) => route.isFirst,
+                  );
+                },
+                icon: Icon(Icons.receipt_long,
+                    size: 16, color: AppTheme.primary),
+                label: const Text(
+                  'My Orders',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.primary,
+                  ),
+                ),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  side: BorderSide(color: AppTheme.primary, width: 2),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
+}
+
 
   Widget _buildSimpleSuccess() {
     return Scaffold(

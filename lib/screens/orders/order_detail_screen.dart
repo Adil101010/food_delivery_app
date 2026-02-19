@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../config/app_theme.dart';
 import '../../models/order_model.dart';
 import '../../services/order_service.dart';
+import '../orders/order_tracking_screen.dart';
 
 class OrderDetailScreen extends StatefulWidget {
   final int orderId;
@@ -47,23 +48,210 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     }
   }
 
+  // ================================================================
+  //  BOTTOM BAR — smart logic
+  // ================================================================
+  Widget _buildBottomBar(BuildContext context) {
+    final order = _order!;
+    final isTrackable = [
+      'PENDING', 'CONFIRMED', 'PREPARING',
+      'ASSIGNED', 'PICKED_UP', 'OUT_FOR_DELIVERY',
+    ].contains(order.status.toUpperCase());
+
+    // Sirf Cancel — not trackable but canCancel
+    if (!isTrackable && order.canCancel) {
+      return _CancelBottomBar(
+        orderId: order.id,
+        onCancelled: () => Navigator.pop(context),
+      );
+    }
+
+    // Sirf Track — trackable but cannot cancel
+    if (isTrackable && !order.canCancel) {
+      return Container(
+        color: Colors.white,
+        padding: const EdgeInsets.all(16),
+        child: SafeArea(
+          top: false,
+          child: SizedBox(
+            height: 50,
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => OrderTrackingScreen(orderId: order.id),
+                ),
+              ),
+              icon: const Icon(Icons.location_on, size: 18),
+              label: const Text(
+                'Track Order',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primary,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Dono — Track + Cancel
+    if (isTrackable && order.canCancel) {
+      return Container(
+        color: Colors.white,
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+        child: SafeArea(
+          top: false,
+          child: Row(
+            children: [
+              Expanded(
+                child: SizedBox(
+                  height: 50,
+                  child: OutlinedButton(
+                    onPressed: () =>
+                        _showCancelDialogFromDetail(context, order.id),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppTheme.error,
+                      side: BorderSide(color: AppTheme.error, width: 1.5),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text(
+                      'Cancel',
+                      style: TextStyle(
+                          fontSize: 15, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                flex: 2,
+                child: SizedBox(
+                  height: 50,
+                  child: ElevatedButton.icon(
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            OrderTrackingScreen(orderId: order.id),
+                      ),
+                    ),
+                    icon: const Icon(Icons.location_on, size: 18),
+                    label: const Text(
+                      'Track Order',
+                      style: TextStyle(
+                          fontSize: 15, fontWeight: FontWeight.w600),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primary,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // DELIVERED / CANCELLED — koi button nahi
+    return const SizedBox.shrink();
+  }
+
+  void _showCancelDialogFromDetail(BuildContext context, int orderId) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: AppTheme.error),
+            const SizedBox(width: 12),
+            const Text('Cancel Order?'),
+          ],
+        ),
+        content: const Text(
+          'Are you sure you want to cancel this order? This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('No, Keep it',
+                style: TextStyle(color: AppTheme.textSecondary)),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              try {
+                await OrderService().cancelOrder(orderId);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: const Text('Order cancelled successfully'),
+                      backgroundColor: AppTheme.success,
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                  Navigator.pop(context);
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                          'Failed: ${e.toString().replaceAll('Exception: ', '')}'),
+                      backgroundColor: AppTheme.error,
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                }
+              }
+            },
+            style: TextButton.styleFrom(foregroundColor: AppTheme.error),
+            child: const Text('Yes, Cancel',
+                style: TextStyle(fontWeight: FontWeight.w600)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ================================================================
+  //  BUILD
+  // ================================================================
   @override
   Widget build(BuildContext context) {
-    final canCancel = _order?.canCancel ?? false;
-
     return Scaffold(
       backgroundColor: AppTheme.background,
       appBar: AppBar(
         title: Text('Order #${widget.orderId}'),
         backgroundColor: Colors.white,
+        foregroundColor: AppTheme.textPrimary,
         elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _loadOrderDetails,
+          ),
+        ],
       ),
       body: SafeArea(
         child: _isLoading
             ? Center(
-                child: CircularProgressIndicator(
-                  color: AppTheme.primary,
-                ),
+                child: CircularProgressIndicator(color: AppTheme.primary),
               )
             : _error != null
                 ? _buildErrorState()
@@ -90,20 +278,27 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                             _DeliveryInfo(order: _order!),
                             const SizedBox(height: 8),
                             _PriceSummary(order: _order!),
-                            const SizedBox(height: 16),
-                            if (!canCancel)
+                            const SizedBox(height: 8),
+                            if (!(_order!.canCancel))
                               Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 16),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16),
                                 child: Align(
                                   alignment: Alignment.centerLeft,
                                   child: Text(
-                                    _order!.status.toUpperCase() == 'CANCELLED'
+                                    _order!.status.toUpperCase() ==
+                                            'CANCELLED'
                                         ? 'This order has already been cancelled.'
-                                        : 'You can no longer cancel this order.',
+                                        : _order!.status.toUpperCase() ==
+                                                'DELIVERED'
+                                            ? 'Order delivered successfully! 🎉'
+                                            : 'You can no longer cancel this order.',
                                     style: TextStyle(
                                       fontSize: 12,
-                                      color: AppTheme.textSecondary,
+                                      color: _order!.status.toUpperCase() ==
+                                              'DELIVERED'
+                                          ? AppTheme.success
+                                          : AppTheme.textSecondary,
                                     ),
                                   ),
                                 ),
@@ -113,14 +308,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                         ),
                       ),
       ),
-      bottomNavigationBar: _order != null && _order!.canCancel
-          ? _CancelBottomBar(
-              orderId: _order!.id,
-              onCancelled: () {
-                Navigator.pop(context);
-              },
-            )
-          : null,
+      bottomNavigationBar:
+          _order != null ? _buildBottomBar(context) : null,
     );
   }
 
@@ -131,11 +320,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.error_outline,
-              size: 80,
-              color: AppTheme.error,
-            ),
+            Icon(Icons.error_outline, size: 80, color: AppTheme.error),
             const SizedBox(height: 24),
             Text(
               'Failed to Load Order',
@@ -149,25 +334,23 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             Text(
               _error ?? '',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 14,
-                color: AppTheme.textSecondary,
-              ),
+              style: TextStyle(fontSize: 14, color: AppTheme.textSecondary),
             ),
             const SizedBox(height: 24),
             ElevatedButton(
               onPressed: _loadOrderDetails,
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.primary,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 32, vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
               child: const Text(
                 'Retry',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
+                style:
+                    TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
               ),
             ),
           ],
@@ -177,6 +360,9 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   }
 }
 
+// ================================================================
+//  STATUS CARD
+// ================================================================
 class _StatusCard extends StatelessWidget {
   final Order order;
 
@@ -187,13 +373,10 @@ class _StatusCard extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-      ),
+      color: Colors.white,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Top row: Order id + created date
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -209,9 +392,7 @@ class _StatusCard extends StatelessWidget {
                 Text(
                   order.formattedCreatedAt!,
                   style: TextStyle(
-                    fontSize: 12,
-                    color: AppTheme.textSecondary,
-                  ),
+                      fontSize: 12, color: AppTheme.textSecondary),
                 ),
             ],
           ),
@@ -264,43 +445,36 @@ class _StatusCard extends StatelessWidget {
 
   IconData _getStatusIcon(String status) {
     switch (status.toUpperCase()) {
-      case 'PENDING':
-        return Icons.schedule;
-      case 'CONFIRMED':
-        return Icons.check_circle_outline;
-      case 'PREPARING':
-        return Icons.restaurant;
-      case 'OUT_FOR_DELIVERY':
-        return Icons.delivery_dining;
-      case 'DELIVERED':
-        return Icons.check_circle;
-      case 'CANCELLED':
-        return Icons.cancel_outlined;
-      default:
-        return Icons.info_outline;
+      case 'PENDING':       return Icons.schedule;
+      case 'CONFIRMED':     return Icons.check_circle_outline;
+      case 'PREPARING':     return Icons.restaurant;
+      case 'ASSIGNED':      return Icons.person;
+      case 'PICKED_UP':     return Icons.shopping_bag;
+      case 'OUT_FOR_DELIVERY': return Icons.delivery_dining;
+      case 'DELIVERED':     return Icons.check_circle;
+      case 'CANCELLED':     return Icons.cancel_outlined;
+      default:              return Icons.info_outline;
     }
   }
 
   String _getStatusMessage(String status) {
     switch (status.toUpperCase()) {
-      case 'PENDING':
-        return 'Your order is waiting for restaurant confirmation';
-      case 'CONFIRMED':
-        return 'Restaurant has confirmed your order';
-      case 'PREPARING':
-        return 'Your delicious food is being prepared';
-      case 'OUT_FOR_DELIVERY':
-        return 'Your order is on the way';
-      case 'DELIVERED':
-        return 'Your order has been delivered. Enjoy your meal!';
-      case 'CANCELLED':
-        return 'This order has been cancelled';
-      default:
-        return 'Processing your order';
+      case 'PENDING':       return 'Waiting for restaurant confirmation';
+      case 'CONFIRMED':     return 'Restaurant has confirmed your order';
+      case 'PREPARING':     return 'Your food is being prepared';
+      case 'ASSIGNED':      return 'Delivery partner assigned';
+      case 'PICKED_UP':     return 'Food picked up from restaurant';
+      case 'OUT_FOR_DELIVERY': return 'Your order is on the way!';
+      case 'DELIVERED':     return 'Delivered! Enjoy your meal 🎉';
+      case 'CANCELLED':     return 'This order has been cancelled';
+      default:              return 'Processing your order';
     }
   }
 }
 
+// ================================================================
+//  RESTAURANT INFO
+// ================================================================
 class _RestaurantInfo extends StatelessWidget {
   final Order order;
 
@@ -315,19 +489,18 @@ class _RestaurantInfo extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-      ),
+      color: Colors.white,
       child: Row(
         children: [
           CircleAvatar(
-            radius: 22,
+            radius: 24,
             backgroundColor: AppTheme.primary.withOpacity(0.1),
             child: Text(
               initial,
               style: const TextStyle(
                 color: AppTheme.primary,
                 fontWeight: FontWeight.w700,
+                fontSize: 18,
               ),
             ),
           ),
@@ -346,11 +519,9 @@ class _RestaurantInfo extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Restaurant • ${order.items.length} items',
+                  '${order.items.length} item${order.items.length > 1 ? 's' : ''}',
                   style: TextStyle(
-                    fontSize: 12,
-                    color: AppTheme.textSecondary,
-                  ),
+                      fontSize: 12, color: AppTheme.textSecondary),
                 ),
               ],
             ),
@@ -361,6 +532,9 @@ class _RestaurantInfo extends StatelessWidget {
   }
 }
 
+// ================================================================
+//  ORDER ITEMS
+// ================================================================
 class _OrderItems extends StatelessWidget {
   final Order order;
 
@@ -371,27 +545,21 @@ class _OrderItems extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-      ),
+      color: Colors.white,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(
-                Icons.receipt_long,
-                size: 18,
-                color: AppTheme.textSecondary,
-              ),
+              Icon(Icons.receipt_long,
+                  size: 18, color: AppTheme.textSecondary),
               const SizedBox(width: 8),
               const Text(
                 'Items',
                 style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: AppTheme.textPrimary,
-                ),
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.textPrimary),
               ),
             ],
           ),
@@ -409,39 +577,43 @@ class _OrderItems extends StatelessWidget {
                   children: [
                     if (index > 0)
                       Divider(
-                        color: AppTheme.border,
-                        height: 1,
-                        indent: 16,
-                        endIndent: 16,
-                      ),
+                          color: AppTheme.border,
+                          height: 1,
+                          indent: 16,
+                          endIndent: 16),
                     Padding(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 10,
-                      ),
+                          horizontal: 12, vertical: 10),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            '${item.quantity}x',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 14,
-                              color: AppTheme.textPrimary,
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: AppTheme.primary.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              '${item.quantity}x',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 13,
+                                color: AppTheme.primary,
+                              ),
                             ),
                           ),
-                          const SizedBox(width: 12),
+                          const SizedBox(width: 10),
                           Expanded(
                             child: Text(
                               item.itemName,
                               style: const TextStyle(
-                                fontSize: 14,
-                                color: AppTheme.textPrimary,
-                              ),
+                                  fontSize: 14,
+                                  color: AppTheme.textPrimary),
                             ),
                           ),
                           Text(
-                            'Rs ${item.totalPrice.toStringAsFixed(0)}',
+                            '₹${item.totalPrice.toStringAsFixed(0)}',
                             style: const TextStyle(
                               fontWeight: FontWeight.w600,
                               fontSize: 14,
@@ -462,6 +634,9 @@ class _OrderItems extends StatelessWidget {
   }
 }
 
+// ================================================================
+//  DELIVERY INFO
+// ================================================================
 class _DeliveryInfo extends StatelessWidget {
   final Order order;
 
@@ -472,9 +647,7 @@ class _DeliveryInfo extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-      ),
+      color: Colors.white,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -484,11 +657,7 @@ class _DeliveryInfo extends StatelessWidget {
               color: AppTheme.error.withOpacity(0.1),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(
-              Icons.location_on,
-              color: AppTheme.error,
-              size: 24,
-            ),
+            child: Icon(Icons.location_on, color: AppTheme.error, size: 24),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -498,19 +667,17 @@ class _DeliveryInfo extends StatelessWidget {
                 const Text(
                   'Delivery Address',
                   style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.textPrimary,
-                  ),
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.textPrimary),
                 ),
                 const SizedBox(height: 6),
                 Text(
                   order.deliveryAddress,
                   style: TextStyle(
-                    fontSize: 14,
-                    color: AppTheme.textSecondary,
-                    height: 1.4,
-                  ),
+                      fontSize: 14,
+                      color: AppTheme.textSecondary,
+                      height: 1.4),
                 ),
               ],
             ),
@@ -521,6 +688,9 @@ class _DeliveryInfo extends StatelessWidget {
   }
 }
 
+// ================================================================
+//  PRICE SUMMARY
+// ================================================================
 class _PriceSummary extends StatelessWidget {
   final Order order;
 
@@ -530,29 +700,29 @@ class _PriceSummary extends StatelessWidget {
   Widget build(BuildContext context) {
     final deliveryFee = order.deliveryFee ?? 40.0;
     final tax = order.tax ?? 0.0;
-    final subtotal = order.subtotal ?? (order.totalAmount - deliveryFee - tax);
+    final subtotal =
+        order.subtotal ?? (order.totalAmount - deliveryFee - tax);
 
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-      ),
+      color: Colors.white,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
             'Bill Details',
             style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: AppTheme.textPrimary,
-            ),
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.textPrimary),
           ),
           const SizedBox(height: 16),
           _buildPriceRow('Item Total', subtotal),
           const SizedBox(height: 12),
-          _buildPriceRow('Delivery Fee', deliveryFee),
+          _buildPriceRow('Delivery Fee',
+              deliveryFee == 0 ? null : deliveryFee,
+              freeLabel: deliveryFee == 0),
           if (tax > 0) ...[
             const SizedBox(height: 12),
             _buildPriceRow('Taxes & Charges', tax),
@@ -567,22 +737,21 @@ class _PriceSummary extends StatelessWidget {
               const Text(
                 'Total Amount',
                 style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.textPrimary,
-                ),
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.textPrimary),
               ),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 14, vertical: 7),
                 decoration: BoxDecoration(
                   color: AppTheme.primary.withOpacity(0.08),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
-                  'Rs ${order.totalAmount.toStringAsFixed(0)}',
+                  '₹${order.totalAmount.toStringAsFixed(0)}',
                   style: const TextStyle(
-                    fontSize: 15,
+                    fontSize: 16,
                     fontWeight: FontWeight.w700,
                     color: AppTheme.primary,
                   ),
@@ -595,30 +764,47 @@ class _PriceSummary extends StatelessWidget {
     );
   }
 
-  Widget _buildPriceRow(String label, double amount) {
+  Widget _buildPriceRow(String label, double? amount,
+      {bool freeLabel = false}) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 14,
-            color: AppTheme.textSecondary,
-          ),
-        ),
-        Text(
-          'Rs ${amount.toStringAsFixed(0)}',
-          style: const TextStyle(
-            fontSize: 14,
-            color: AppTheme.textPrimary,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
+        Text(label,
+            style: TextStyle(
+                fontSize: 14, color: AppTheme.textSecondary)),
+        freeLabel
+            ? Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.green.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: const Text(
+                  'FREE',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.green,
+                  ),
+                ),
+              )
+            : Text(
+                '₹${amount?.toStringAsFixed(0) ?? '0'}',
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: AppTheme.textPrimary,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
       ],
     );
   }
 }
 
+// ================================================================
+//  CANCEL BOTTOM BAR
+// ================================================================
 class _CancelBottomBar extends StatelessWidget {
   final int orderId;
   final VoidCallback onCancelled;
@@ -636,7 +822,7 @@ class _CancelBottomBar extends StatelessWidget {
       child: SafeArea(
         top: false,
         child: SizedBox(
-          height: 48,
+          height: 50,
           width: double.infinity,
           child: OutlinedButton(
             onPressed: () => _showCancelDialog(context),
@@ -649,10 +835,7 @@ class _CancelBottomBar extends StatelessWidget {
             ),
             child: const Text(
               'Cancel Order',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
             ),
           ),
         ),
@@ -663,10 +846,9 @@ class _CancelBottomBar extends StatelessWidget {
   void _showCancelDialog(BuildContext context) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+      builder: (ctx) => AlertDialog(
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
           children: [
             Icon(Icons.warning_amber_rounded, color: AppTheme.error),
@@ -679,22 +861,18 @@ class _CancelBottomBar extends StatelessWidget {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              'No, Keep it',
-              style: TextStyle(color: AppTheme.textSecondary),
-            ),
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('No, Keep it',
+                style: TextStyle(color: AppTheme.textSecondary)),
           ),
           TextButton(
             onPressed: () async {
-              Navigator.pop(context);
+              Navigator.pop(ctx);
               await _cancelOrder(context);
             },
             style: TextButton.styleFrom(foregroundColor: AppTheme.error),
-            child: const Text(
-              'Yes, Cancel',
-              style: TextStyle(fontWeight: FontWeight.w600),
-            ),
+            child: const Text('Yes, Cancel',
+                style: TextStyle(fontWeight: FontWeight.w600)),
           ),
         ],
       ),
@@ -704,7 +882,6 @@ class _CancelBottomBar extends StatelessWidget {
   Future<void> _cancelOrder(BuildContext context) async {
     try {
       await OrderService().cancelOrder(orderId);
-
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -713,7 +890,6 @@ class _CancelBottomBar extends StatelessWidget {
             behavior: SnackBarBehavior.floating,
           ),
         );
-
         onCancelled();
       }
     } catch (e) {
@@ -721,8 +897,7 @@ class _CancelBottomBar extends StatelessWidget {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Failed to cancel: ${e.toString().replaceAll('Exception: ', '')}',
-            ),
+                'Failed: ${e.toString().replaceAll('Exception: ', '')}'),
             backgroundColor: AppTheme.error,
             behavior: SnackBarBehavior.floating,
           ),

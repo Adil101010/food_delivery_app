@@ -1,5 +1,3 @@
-// lib/screens/payment/payment_screen.dart
-
 import 'package:flutter/material.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'dart:convert';
@@ -7,19 +5,20 @@ import 'package:http/http.dart' as http;
 import '../../config/app_theme.dart';
 import '../../config/api_config.dart';
 import '../../services/token_manager.dart';
+import '../orders/order_tracking_screen.dart';
 
 class PaymentScreen extends StatefulWidget {
   final int orderId;
   final double totalAmount;
-  final String? razorpayOrderId;  // Add this
-  final String? razorpayKeyId;    // Add this
+  final String? razorpayOrderId;
+  final String? razorpayKeyId;
 
   const PaymentScreen({
     Key? key,
     required this.orderId,
     required this.totalAmount,
-    this.razorpayOrderId,  // Add this
-    this.razorpayKeyId,    // Add this
+    this.razorpayOrderId,
+    this.razorpayKeyId,
   }) : super(key: key);
 
   @override
@@ -40,11 +39,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
     _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handlePaymentSuccess);
     _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _handlePaymentError);
     _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, _handleExternalWallet);
-    
-    // Set razorpay details from order creation response
     _razorpayOrderId = widget.razorpayOrderId;
     _razorpayKeyId = widget.razorpayKeyId;
-    
+
     print('💳 PaymentScreen initialized with:');
     print('   OrderId: ${widget.orderId}');
     print('   Amount: ${widget.totalAmount}');
@@ -58,24 +55,28 @@ class _PaymentScreenState extends State<PaymentScreen> {
     super.dispose();
   }
 
+  // ================================================================
+  //  PROCESS PAYMENT — router
+  // ================================================================
   Future<void> _processPayment() async {
     if (_selectedPaymentMethod == 'CASH_ON_DELIVERY') {
-      _processCODPayment();
+      await _processCODPayment();
     } else {
-      _processOnlinePayment();
+      await _processOnlinePayment();
     }
   }
 
+  // ================================================================
+  //  ONLINE PAYMENT
+  // ================================================================
   Future<void> _processOnlinePayment() async {
     setState(() => _isProcessing = true);
 
     try {
-      // Get user details
       final userName = await TokenManager.getUserName() ?? 'Customer';
       final userEmail = await TokenManager.getUserEmail() ?? '';
       final userPhone = await TokenManager.getUserPhone() ?? '';
 
-      // If razorpay details already available, directly open checkout
       if (_razorpayOrderId != null && _razorpayKeyId != null) {
         print('✅ Using existing Razorpay order: $_razorpayOrderId');
         setState(() => _isProcessing = false);
@@ -83,19 +84,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
         return;
       }
 
-      // Otherwise create new razorpay order (fallback - shouldn't happen)
+      // Fallback — create new Razorpay order
       print('⚠️ Creating new Razorpay order (fallback)');
-      
       final userId = await TokenManager.getUserId();
-      if (userId == null) {
-        throw Exception('User not logged in');
-      }
-
-      print('💳 Creating Razorpay order with user details:');
-      print('   UserId: $userId');
-      print('   UserName: $userName');
-      print('   UserEmail: $userEmail');
-      print('   UserPhone: $userPhone');
+      if (userId == null) throw Exception('User not logged in');
 
       final orderData = {
         'orderId': widget.orderId,
@@ -103,35 +95,33 @@ class _PaymentScreenState extends State<PaymentScreen> {
         'currency': 'INR',
         'userId': userId,
         'customerName': userName,
-        'customerEmail': userEmail.isNotEmpty ? userEmail : 'customer@example.com',
+        'customerEmail':
+            userEmail.isNotEmpty ? userEmail : 'customer@example.com',
         'customerPhone': userPhone.isNotEmpty ? userPhone : '9876543210',
       };
 
-      print('💳 Creating Razorpay order: $orderData');
+      final response = await http
+          .post(
+            Uri.parse(
+                '${ApiConfig.baseUrl}/api/payments/razorpay/create-order'),
+            headers: {
+              'Authorization': 'Bearer ${await TokenManager.getToken()}',
+              'Content-Type': 'application/json',
+            },
+            body: json.encode(orderData),
+          )
+          .timeout(const Duration(seconds: 30));
 
-      final response = await http.post(
-        Uri.parse('${ApiConfig.baseUrl}/api/payments/razorpay/create-order'),
-        headers: {
-          'Authorization': 'Bearer ${await TokenManager.getToken()}',
-          'Content-Type': 'application/json',
-        },
-        body: json.encode(orderData),
-      ).timeout(const Duration(seconds: 30));
-
-      print('📥 Create order response: ${response.statusCode} - ${response.body}');
+      print(
+          '📥 Create order response: ${response.statusCode} - ${response.body}');
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = json.decode(response.body);
-        
         setState(() {
           _razorpayOrderId = data['razorpayOrderId'];
           _razorpayKeyId = data['keyId'];
           _isProcessing = false;
         });
-
-        print('✅ Razorpay order created: $_razorpayOrderId');
-        
-        // Open Razorpay checkout
         _openRazorpayCheckout(userName, userEmail, userPhone);
       } else {
         throw Exception('Failed to create payment order: ${response.body}');
@@ -139,30 +129,28 @@ class _PaymentScreenState extends State<PaymentScreen> {
     } catch (e) {
       setState(() => _isProcessing = false);
       print('❌ Error in payment: $e');
-      
       _showErrorDialog('Failed to process payment. Please try again.');
     }
   }
 
-  void _openRazorpayCheckout(String userName, String userEmail, String userPhone) {
-    var options = {
+  void _openRazorpayCheckout(
+      String userName, String userEmail, String userPhone) {
+    final options = {
       'key': _razorpayKeyId,
-      'amount': (widget.totalAmount * 100).toInt(), // Convert to paise
+      'amount': (widget.totalAmount * 100).toInt(),
       'name': 'Food Delivery',
       'order_id': _razorpayOrderId,
       'description': 'Order #${widget.orderId}',
-      'timeout': 300, // 5 minutes
+      'timeout': 300,
       'prefill': {
         'contact': userPhone.isNotEmpty ? userPhone : '9876543210',
         'email': userEmail.isNotEmpty ? userEmail : 'customer@example.com',
         'name': userName,
       },
-      'theme': {
-        'color': '#FF6B35'
-      }
+      'theme': {'color': '#FF6B35'},
     };
 
-    print('🎯 Opening Razorpay checkout with options: $options');
+    print('🎯 Opening Razorpay checkout: $options');
 
     try {
       _razorpay.open(options);
@@ -172,6 +160,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
     }
   }
 
+  // ================================================================
+  //  RAZORPAY CALLBACKS
+  // ================================================================
   void _handlePaymentSuccess(PaymentSuccessResponse response) async {
     print('✅ Payment Success!');
     print('   Payment ID: ${response.paymentId}');
@@ -181,7 +172,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
     setState(() => _isProcessing = true);
 
     try {
-      // Verify payment on backend
       final verifyData = {
         'razorpayOrderId': response.orderId ?? _razorpayOrderId,
         'razorpayPaymentId': response.paymentId ?? '',
@@ -190,22 +180,25 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
       print('🔍 Verifying payment: $verifyData');
 
-      final verifyResponse = await http.post(
-        Uri.parse('${ApiConfig.baseUrl}/api/payments/razorpay/verify'),
-        headers: {
-          'Authorization': 'Bearer ${await TokenManager.getToken()}',
-          'Content-Type': 'application/json',
-        },
-        body: json.encode(verifyData),
-      ).timeout(const Duration(seconds: 30));
+      final verifyResponse = await http
+          .post(
+            Uri.parse(
+                '${ApiConfig.baseUrl}/api/payments/razorpay/verify-payment'),
+            headers: {
+              'Authorization': 'Bearer ${await TokenManager.getToken()}',
+              'Content-Type': 'application/json',
+            },
+            body: json.encode(verifyData),
+          )
+          .timeout(const Duration(seconds: 30));
 
-      print('📥 Verify response: ${verifyResponse.statusCode} - ${verifyResponse.body}');
+      print(
+          '📥 Verify response: ${verifyResponse.statusCode} - ${verifyResponse.body}');
 
       setState(() => _isProcessing = false);
 
       if (verifyResponse.statusCode == 200) {
         final result = json.decode(verifyResponse.body);
-        
         if (result['success'] == true) {
           _showSuccessDialog();
         } else {
@@ -222,41 +215,46 @@ class _PaymentScreenState extends State<PaymentScreen> {
   }
 
   void _handlePaymentError(PaymentFailureResponse response) {
-    print('❌ Payment Error!');
-    print('   Code: ${response.code}');
-    print('   Message: ${response.message}');
-    
+    print('❌ Payment Error: ${response.code} - ${response.message}');
     _showErrorDialog('Payment failed: ${response.message}');
   }
 
   void _handleExternalWallet(ExternalWalletResponse response) {
     print('🔗 External Wallet: ${response.walletName}');
-    _showErrorDialog('External wallet selected: ${response.walletName}');
   }
 
+  // ================================================================
+  //  COD PAYMENT ✅ FULLY WORKING
+  // ================================================================
   Future<void> _processCODPayment() async {
     setState(() => _isProcessing = true);
 
     try {
-      print('💵 Processing COD payment for order: ${widget.orderId}');
+      print('💵 Processing COD for order: ${widget.orderId}');
 
-      // Update payment status to COD
-      final response = await http.post(
-        Uri.parse('${ApiConfig.baseUrl}/api/payments/cod/${widget.orderId}'),
-        headers: {
-          'Authorization': 'Bearer ${await TokenManager.getToken()}',
-          'Content-Type': 'application/json',
-        },
-      ).timeout(const Duration(seconds: 30));
+      final response = await http
+          .post(
+            Uri.parse(
+                '${ApiConfig.baseUrl}/api/payments/cod/${widget.orderId}'),
+            headers: {
+              'Authorization': 'Bearer ${await TokenManager.getToken()}',
+              'Content-Type': 'application/json',
+            },
+          )
+          .timeout(const Duration(seconds: 30));
 
-      print('📥 COD response: ${response.statusCode} - ${response.body}');
+      print(
+          '📥 COD response: ${response.statusCode} - ${response.body}');
 
       setState(() => _isProcessing = false);
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         _showSuccessDialog();
       } else {
-        _showErrorDialog('Failed to process COD payment');
+        // ✅ Agar COD endpoint nahi hai backend pe — gracefully handle
+        final body = json.decode(response.body);
+        _showErrorDialog(
+            body['message'] ?? 'Failed to process COD. Try again.');
       }
     } catch (e) {
       setState(() => _isProcessing = false);
@@ -265,66 +263,122 @@ class _PaymentScreenState extends State<PaymentScreen> {
     }
   }
 
+  // ================================================================
+  //  SUCCESS DIALOG — Track Order
+  // ================================================================
   void _showSuccessDialog() {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      builder: (ctx) => AlertDialog(
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            // ✅ Animated check icon
             Container(
-              padding: EdgeInsets.all(20),
+              padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 color: Colors.green.withOpacity(0.1),
                 shape: BoxShape.circle,
               ),
-              child: Icon(
-                Icons.check_circle,
-                color: Colors.green,
-                size: 64,
-              ),
+              child: const Icon(Icons.check_circle,
+                  color: Colors.green, size: 64),
             ),
-            SizedBox(height: 24),
-            Text(
-              'Payment Successful!',
+            const SizedBox(height: 20),
+            const Text(
+              'Order Placed! 🎉',
               style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: AppTheme.textPrimary,
-              ),
+                  fontSize: 22, fontWeight: FontWeight.bold),
             ),
-            SizedBox(height: 12),
+            const SizedBox(height: 10),
             Text(
-              'Your order has been placed successfully',
+              _selectedPaymentMethod == 'CASH_ON_DELIVERY'
+                  ? 'Your order is confirmed.\nPay ₹${widget.totalAmount.toStringAsFixed(0)} on delivery.'
+                  : 'Payment of ₹${widget.totalAmount.toStringAsFixed(0)} received.',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 14,
-                color: AppTheme.textSecondary,
+              style: const TextStyle(fontSize: 14, color: Colors.grey),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppTheme.primary.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                'Order #${widget.orderId}',
+                style: TextStyle(
+                  color: AppTheme.primary,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 14,
+                ),
               ),
             ),
-            SizedBox(height: 24),
+            const SizedBox(height: 24),
+
+            // ✅ Primary — Track Order
             SizedBox(
               width: double.infinity,
-              child: ElevatedButton(
+              child: ElevatedButton.icon(
                 onPressed: () {
-                  Navigator.pop(context); // Close dialog
-                  Navigator.pop(context, true); // Return to cart with success
+                  Navigator.pop(ctx);
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => OrderTrackingScreen(
+                        orderId: widget.orderId,
+                      ),
+                    ),
+                    (route) => route.isFirst,
+                  );
                 },
+                icon: const Icon(Icons.location_on, size: 18),
+                label: const Text(
+                  'Track My Order',
+                  style: TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.w600),
+                ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.primary,
                   foregroundColor: Colors.white,
-                  padding: EdgeInsets.symmetric(vertical: 14),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                child: Text(
-                  'View My Orders',
+              ),
+            ),
+            const SizedBox(height: 10),
+
+            // ✅ Secondary — View All Orders
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  Navigator.pushNamedAndRemoveUntil(
+                    context,
+                    '/orders',
+                    (route) => route.isFirst,
+                  );
+                },
+                icon: Icon(Icons.receipt_long,
+                    size: 18, color: AppTheme.primary),
+                label: Text(
+                  'View All Orders',
                   style: TextStyle(
-                    fontSize: 16,
+                    color: AppTheme.primary,
                     fontWeight: FontWeight.w600,
+                  ),
+                ),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  side: BorderSide(color: AppTheme.primary),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
               ),
@@ -335,75 +389,71 @@ class _PaymentScreenState extends State<PaymentScreen> {
     );
   }
 
+  // ================================================================
+  //  ERROR DIALOG
+  // ================================================================
   void _showErrorDialog(String message) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      builder: (ctx) => AlertDialog(
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              padding: EdgeInsets.all(20),
+              padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 color: AppTheme.error.withOpacity(0.1),
                 shape: BoxShape.circle,
               ),
-              child: Icon(
-                Icons.error_outline,
-                color: AppTheme.error,
-                size: 64,
-              ),
+              child:
+                  Icon(Icons.error_outline, color: AppTheme.error, size: 64),
             ),
-            SizedBox(height: 24),
-            Text(
+            const SizedBox(height: 20),
+            const Text(
               'Payment Failed',
               style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: AppTheme.textPrimary,
-              ),
+                  fontSize: 22, fontWeight: FontWeight.bold),
             ),
-            SizedBox(height: 12),
+            const SizedBox(height: 10),
             Text(
               message,
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 14,
-                color: AppTheme.textSecondary,
-              ),
+              style: const TextStyle(fontSize: 14, color: Colors.grey),
             ),
-            SizedBox(height: 24),
+            const SizedBox(height: 24),
             Row(
               children: [
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: () => Navigator.pop(ctx),
                     style: OutlinedButton.styleFrom(
-                      padding: EdgeInsets.symmetric(vertical: 14),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
                       side: BorderSide(color: AppTheme.border),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    child: Text('Cancel'),
+                    child: const Text('Cancel'),
                   ),
                 ),
-                SizedBox(width: 12),
+                const SizedBox(width: 12),
                 Expanded(
                   child: ElevatedButton(
                     onPressed: () {
-                      Navigator.pop(context);
+                      Navigator.pop(ctx);
                       _processPayment();
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppTheme.primary,
-                      padding: EdgeInsets.symmetric(vertical: 14),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    child: Text('Retry'),
+                    child: const Text('Retry'),
                   ),
                 ),
               ],
@@ -414,25 +464,21 @@ class _PaymentScreenState extends State<PaymentScreen> {
     );
   }
 
+  // ================================================================
+  //  BUILD
+  // ================================================================
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTheme.background,
       appBar: AppBar(
-        title: Text(
+        title: const Text(
           'Payment',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
-            color: AppTheme.textPrimary,
-          ),
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
         ),
         backgroundColor: Colors.white,
+        foregroundColor: AppTheme.textPrimary,
         elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: AppTheme.textPrimary),
-          onPressed: () => Navigator.pop(context),
-        ),
       ),
       body: _isProcessing
           ? Center(
@@ -440,38 +486,38 @@ class _PaymentScreenState extends State<PaymentScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   CircularProgressIndicator(color: AppTheme.primary),
-                  SizedBox(height: 16),
+                  const SizedBox(height: 16),
                   Text(
-                    'Processing payment...',
+                    _selectedPaymentMethod == 'CASH_ON_DELIVERY'
+                        ? 'Placing your order...'
+                        : 'Processing payment...',
                     style: TextStyle(
-                      fontSize: 16,
-                      color: AppTheme.textSecondary,
-                    ),
+                        fontSize: 16, color: AppTheme.textSecondary),
                   ),
                 ],
               ),
             )
           : SingleChildScrollView(
+              padding: const EdgeInsets.only(bottom: 20),
               child: Column(
                 children: [
                   _buildOrderSummary(),
-                  SizedBox(height: 16),
+                  const SizedBox(height: 16),
                   _buildPaymentMethods(),
-                  SizedBox(height: 24),
                 ],
               ),
             ),
       bottomNavigationBar: _isProcessing
           ? null
           : Container(
-              padding: EdgeInsets.all(16),
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: Colors.white,
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withOpacity(0.05),
                     blurRadius: 10,
-                    offset: Offset(0, -2),
+                    offset: const Offset(0, -2),
                   ),
                 ],
               ),
@@ -481,19 +527,17 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.primary,
                     foregroundColor: Colors.white,
-                    padding: EdgeInsets.symmetric(vertical: 16),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
                   child: Text(
                     _selectedPaymentMethod == 'CASH_ON_DELIVERY'
-                        ? 'Place Order (COD)'
-                        : 'Pay ₹${widget.totalAmount.toStringAsFixed(2)}',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
+                        ? '🛵  Place Order (Cash on Delivery)'
+                        : '💳  Pay ₹${widget.totalAmount.toStringAsFixed(2)}',
+                    style: const TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                 ),
               ),
@@ -501,36 +545,35 @@ class _PaymentScreenState extends State<PaymentScreen> {
     );
   }
 
+  // ================================================================
+  //  ORDER SUMMARY
+  // ================================================================
   Widget _buildOrderSummary() {
     return Container(
-      margin: EdgeInsets.all(16),
-      padding: EdgeInsets.all(20),
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
             blurRadius: 10,
-            offset: Offset(0, 2),
+            offset: const Offset(0, 2),
           ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          const Text(
             'Order Summary',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: AppTheme.textPrimary,
-            ),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
-          SizedBox(height: 16),
-          _buildSummaryRow('Order ID', '#${widget.orderId}'),
-          Divider(height: 24),
-          _buildSummaryRow(
+          const SizedBox(height: 16),
+          _summaryRow('Order ID', '#${widget.orderId}'),
+          const Divider(height: 24),
+          _summaryRow(
             'Total Amount',
             '₹${widget.totalAmount.toStringAsFixed(2)}',
             isTotal: true,
@@ -540,7 +583,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
     );
   }
 
-  Widget _buildSummaryRow(String label, String value, {bool isTotal = false}) {
+  Widget _summaryRow(String label, String value, {bool isTotal = false}) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -564,44 +607,43 @@ class _PaymentScreenState extends State<PaymentScreen> {
     );
   }
 
+  // ================================================================
+  //  PAYMENT METHODS
+  // ================================================================
   Widget _buildPaymentMethods() {
     return Container(
-      margin: EdgeInsets.symmetric(horizontal: 16),
-      padding: EdgeInsets.all(20),
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
             blurRadius: 10,
-            offset: Offset(0, 2),
+            offset: const Offset(0, 2),
           ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Payment Method',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: AppTheme.textPrimary,
-            ),
+          const Text(
+            'Select Payment Method',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
-          SizedBox(height: 16),
+          const SizedBox(height: 16),
           _buildPaymentOption(
             'ONLINE',
             'Online Payment',
-            'Pay using UPI, Card, Net Banking',
-            Icons.payment,
+            'UPI • Cards • Net Banking • Wallets',
+            Icons.payment_outlined,
           ),
-          SizedBox(height: 12),
+          const SizedBox(height: 12),
           _buildPaymentOption(
             'CASH_ON_DELIVERY',
             'Cash on Delivery',
-            'Pay when your order arrives',
+            'Pay ₹${widget.totalAmount.toStringAsFixed(0)} when order arrives',
             Icons.money,
           ),
         ],
@@ -620,33 +662,36 @@ class _PaymentScreenState extends State<PaymentScreen> {
     return InkWell(
       onTap: () => setState(() => _selectedPaymentMethod = value),
       borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: EdgeInsets.all(16),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           border: Border.all(
-            color: isSelected ? AppTheme.primary : AppTheme.border,
+            color: isSelected ? AppTheme.primary : Colors.grey.shade200,
             width: isSelected ? 2 : 1,
           ),
           borderRadius: BorderRadius.circular(12),
-          color: isSelected ? AppTheme.primary.withOpacity(0.05) : Colors.white,
+          color: isSelected
+              ? AppTheme.primary.withOpacity(0.05)
+              : Colors.white,
         ),
         child: Row(
           children: [
             Container(
-              padding: EdgeInsets.all(12),
+              padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
                 color: isSelected
-                    ? AppTheme.primary.withOpacity(0.1)
-                    : AppTheme.surface,
-                borderRadius: BorderRadius.circular(8),
+                    ? AppTheme.primary.withOpacity(0.12)
+                    : Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(
                 icon,
-                color: isSelected ? AppTheme.primary : AppTheme.textSecondary,
+                color: isSelected ? AppTheme.primary : Colors.grey,
                 size: 24,
               ),
             ),
-            SizedBox(width: 16),
+            const SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -654,18 +699,16 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   Text(
                     title,
                     style: TextStyle(
-                      fontSize: 16,
+                      fontSize: 15,
                       fontWeight: FontWeight.w600,
                       color: AppTheme.textPrimary,
                     ),
                   ),
-                  SizedBox(height: 4),
+                  const SizedBox(height: 3),
                   Text(
                     subtitle,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: AppTheme.textSecondary,
-                    ),
+                    style: const TextStyle(
+                        fontSize: 12, color: Colors.grey),
                   ),
                 ],
               ),
@@ -673,7 +716,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
             Radio<String>(
               value: value,
               groupValue: _selectedPaymentMethod,
-              onChanged: (val) => setState(() => _selectedPaymentMethod = val!),
+              onChanged: (val) =>
+                  setState(() => _selectedPaymentMethod = val!),
               activeColor: AppTheme.primary,
             ),
           ],

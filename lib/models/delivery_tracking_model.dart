@@ -27,6 +27,28 @@ class DeliveryTracking {
     required this.statusHistory,
   });
 
+  // ✅ copyWith add kiya
+  DeliveryTracking copyWith({
+    DeliveryLocation? currentLocation,
+    String? status,
+    DateTime? estimatedDeliveryTime,
+  }) {
+    return DeliveryTracking(
+      deliveryId: deliveryId,
+      orderId: orderId,
+      partnerId: partnerId,
+      partnerName: partnerName,
+      partnerPhone: partnerPhone,
+      status: status ?? this.status,
+      currentLocation: currentLocation ?? this.currentLocation,
+      pickupLocation: pickupLocation,
+      dropLocation: dropLocation,
+      estimatedDeliveryTime: estimatedDeliveryTime ?? this.estimatedDeliveryTime,
+      actualDeliveryTime: actualDeliveryTime,
+      statusHistory: statusHistory,
+    );
+  }
+
   factory DeliveryTracking.fromJson(Map<String, dynamic> json) {
     return DeliveryTracking(
       deliveryId: json['deliveryId'] ?? json['delivery_id'] ?? 0,
@@ -36,7 +58,8 @@ class DeliveryTracking {
       partnerPhone: json['partnerPhone'] ?? json['partner_phone'] ?? '',
       status: json['status'] ?? 'PENDING',
       currentLocation: json['currentLocation'] != null || json['current_location'] != null
-          ? DeliveryLocation.fromJson(json['currentLocation'] ?? json['current_location'])
+          ? DeliveryLocation.fromJson(
+              json['currentLocation'] ?? json['current_location'])
           : null,
       pickupLocation: DeliveryLocation.fromJson(
         json['pickupLocation'] ?? json['pickup_location'] ?? {},
@@ -51,9 +74,7 @@ class DeliveryTracking {
               : null),
       actualDeliveryTime: json['actualDeliveryTime'] != null
           ? DateTime.parse(json['actualDeliveryTime'])
-          : (json['actual_delivery_time'] != null
-              ? DateTime.parse(json['actual_delivery_time'])
-              : null),
+          : null,
       statusHistory: json['statusHistory'] != null
           ? List<String>.from(json['statusHistory'])
           : (json['status_history'] != null
@@ -81,7 +102,7 @@ class DeliveryLocation {
       latitude: (json['latitude'] ?? json['lat'] ?? 0.0).toDouble(),
       longitude: (json['longitude'] ?? json['lng'] ?? json['lon'] ?? 0.0).toDouble(),
       address: json['address'],
-      timestamp: json['timestamp'] != null 
+      timestamp: json['timestamp'] != null
           ? DateTime.parse(json['timestamp'])
           : null,
     );

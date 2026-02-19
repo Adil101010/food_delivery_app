@@ -22,23 +22,25 @@ class ApiService {
       InterceptorsWrapper(
         onRequest: (options, handler) async {
           final token = await TokenManager.getStoredToken();
-          
+
           if (token != null && token.isNotEmpty) {
             options.headers['Authorization'] = 'Bearer $token';
             if (ApiConfig.isDebugMode) {
               print('Token added to: ${options.path}');
             }
           }
-          
+
           if (ApiConfig.isDebugMode) {
-            print('Request: ${options.method} ${options.baseUrl}${options.path}');
+            print(
+                'Request: ${options.method} ${options.baseUrl}${options.path}');
           }
-          
+
           return handler.next(options);
         },
         onResponse: (response, handler) {
           if (ApiConfig.isDebugMode) {
-            print('Response: ${response.statusCode} from ${response.requestOptions.path}');
+            print(
+                'Response: ${response.statusCode} from ${response.requestOptions.path}');
           }
           return handler.next(response);
         },
@@ -46,25 +48,25 @@ class ApiService {
           if (ApiConfig.isDebugMode) {
             print('API Error: ${error.message}');
             print('Status Code: ${error.response?.statusCode}');
-            print('URL: ${error.requestOptions.baseUrl}${error.requestOptions.path}');
-            
+            print(
+                'URL: ${error.requestOptions.baseUrl}${error.requestOptions.path}');
+
             if (error.response?.data != null) {
               print('Error Response: ${error.response?.data}');
             }
           }
-          
-          // Handle 401 Unauthorized - clear auth and redirect to login
+
+          // Handle 401 Unauthorized
           if (error.response?.statusCode == 401) {
             print('Unauthorized access - Clearing auth data');
             await TokenManager.clearAuthData();
-            // Note: Navigation should be handled in UI layer, not here
           }
-          
+
           return handler.next(error);
         },
       ),
     );
-    
+
     if (ApiConfig.isDebugMode) {
       print('========================================');
       print('ApiService Initialized');
@@ -85,19 +87,17 @@ class ApiService {
         print('Status: ${error.response?.statusCode}');
       }
 
-      // Check backend JSON response
       if (error.response?.data != null) {
         final data = error.response!.data;
-        
+
         if (data is Map<String, dynamic>) {
           if (data['message'] != null) return data['message'].toString();
           if (data['error'] != null) return data['error'].toString();
         }
-        
+
         if (data is String) return data;
       }
-      
-      // Network-specific errors
+
       switch (error.type) {
         case DioExceptionType.connectionTimeout:
           return 'Connection timeout. Check if backend is running on ${ApiConfig.baseUrl}';
@@ -111,14 +111,14 @@ class ApiService {
           break;
       }
     }
-    
+
     return defaultMessage;
   }
 
   // Handle HTTP status code errors
   String _handleStatusCodeError(int? statusCode) {
     if (statusCode == null) return 'Unknown error occurred';
-    
+
     switch (statusCode) {
       case 400:
         return 'Bad request. Please check your input.';
@@ -150,7 +150,8 @@ class ApiService {
       return response.data;
     } on DioException catch (e) {
       print('Failed to fetch restaurants: ${e.message}');
-      throw Exception(_extractErrorMessage(e, 'Failed to load restaurants. Please try again.'));
+      throw Exception(
+          _extractErrorMessage(e, 'Failed to load restaurants. Please try again.'));
     }
   }
 
@@ -166,7 +167,8 @@ class ApiService {
       return response.data;
     } catch (e) {
       print('Failed to fetch restaurant: $e');
-      throw Exception(_extractErrorMessage(e, 'Failed to load restaurant details.'));
+      throw Exception(
+          _extractErrorMessage(e, 'Failed to load restaurant details.'));
     }
   }
 
@@ -174,12 +176,14 @@ class ApiService {
   Future<List<dynamic>> getMenuItems(int restaurantId) async {
     try {
       print('Fetching menu for restaurant $restaurantId...');
-      final response = await _dio.get('/api/menu/restaurant/$restaurantId/available');
+      final response =
+          await _dio.get('/api/menu/restaurant/$restaurantId/available');
       print('Menu items fetched: ${response.data.length}');
       return response.data;
     } on DioException catch (e) {
       print('Failed to fetch menu: ${e.message}');
-      throw Exception(_extractErrorMessage(e, 'Failed to load menu. Please try again.'));
+      throw Exception(
+          _extractErrorMessage(e, 'Failed to load menu. Please try again.'));
     }
   }
 
@@ -194,7 +198,8 @@ class ApiService {
       return response.data;
     } catch (e) {
       print('Search failed: $e');
-      throw Exception(_extractErrorMessage(e, 'Failed to search restaurants.'));
+      throw Exception(
+          _extractErrorMessage(e, 'Failed to search restaurants.'));
     }
   }
 
@@ -206,7 +211,8 @@ class ApiService {
       return response.data;
     } catch (e) {
       print('Failed to fetch by cuisine: $e');
-      throw Exception(_extractErrorMessage(e, 'Failed to load restaurants.'));
+      throw Exception(
+          _extractErrorMessage(e, 'Failed to load restaurants.'));
     }
   }
 
@@ -233,7 +239,6 @@ class ApiService {
 
       print('Registration successful');
 
-      // Handle different response formats from backend
       if (response.data != null && response.data['accessToken'] != null) {
         final token = response.data['accessToken'];
         final userId = response.data['userId'];
@@ -266,7 +271,8 @@ class ApiService {
       }
     } on DioException catch (e) {
       print('Registration error: ${e.message}');
-      throw Exception(_extractErrorMessage(e, 'Registration failed. Please try again.'));
+      throw Exception(
+          _extractErrorMessage(e, 'Registration failed. Please try again.'));
     }
   }
 
@@ -275,7 +281,7 @@ class ApiService {
     try {
       print('Fetching current user profile...');
       final response = await _dio.get('/api/users/profile');
-      
+
       if (response.data != null) {
         print('User profile fetched successfully');
         return User.fromJson(response.data);
@@ -284,7 +290,8 @@ class ApiService {
       }
     } on DioException catch (e) {
       print('Failed to fetch user profile: ${e.message}');
-      throw Exception(_extractErrorMessage(e, 'Failed to load profile. Please try again.'));
+      throw Exception(
+          _extractErrorMessage(e, 'Failed to load profile. Please try again.'));
     }
   }
 
@@ -295,9 +302,7 @@ class ApiService {
   }) async {
     try {
       print('Updating user profile...');
-      print('Name: $name');
-      print('Phone: $phone');
-      
+
       final response = await _dio.put(
         '/api/users/profile',
         data: {
@@ -305,10 +310,9 @@ class ApiService {
           'phone': phone,
         },
       );
-      
+
       if (response.statusCode == 200) {
         print('Profile updated successfully');
-        
         await TokenManager.updateUserData(
           userName: name,
           userPhone: phone,
@@ -318,7 +322,37 @@ class ApiService {
       }
     } on DioException catch (e) {
       print('Failed to update profile: ${e.message}');
-      throw Exception(_extractErrorMessage(e, 'Failed to update profile. Please try again.'));
+      throw Exception(
+          _extractErrorMessage(e, 'Failed to update profile. Please try again.'));
+    }
+  }
+
+  // ✅ Change Password
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    try {
+      print('Changing password...');
+
+      final response = await _dio.put(
+        '/api/users/change-password',
+        data: {
+          'currentPassword': currentPassword,
+          'newPassword': newPassword,
+        },
+      );
+
+      if (response.statusCode == 200 && response.data['success'] == true) {
+        print('Password changed successfully');
+      } else {
+        throw Exception(
+            response.data['message'] ?? 'Failed to change password');
+      }
+    } on DioException catch (e) {
+      print('Failed to change password: ${e.message}');
+      throw Exception(
+          _extractErrorMessage(e, 'Failed to change password. Please try again.'));
     }
   }
 

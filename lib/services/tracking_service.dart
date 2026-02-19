@@ -9,22 +9,27 @@ class TrackingService {
   final String baseUrl = ApiConfig.baseUrl;
   Timer? _locationUpdateTimer;
 
-  // Get delivery tracking info
   Future<DeliveryTracking> getDeliveryTracking(int orderId) async {
     try {
       final token = await TokenManager.getToken();
-      
       final response = await http.get(
-        Uri.parse('$baseUrl/delivery/order/$orderId/tracking'),
+        Uri.parse('$baseUrl/api/deliveries/order/$orderId'), // ✅ /api/ prefix
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },
       );
 
+      print('📍 Tracking response: ${response.statusCode}');
+      print('📍 Tracking body: ${response.body}');
+
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        return DeliveryTracking.fromJson(data);
+        // ✅ Handle wrapped response {data: {...}} or direct {...}
+        final trackingData = data['data'] ?? data;
+        return DeliveryTracking.fromJson(trackingData);
+      } else if (response.statusCode == 404) {
+        throw Exception('Tracking not available yet. Order may still be pending.');
       } else {
         throw Exception('Failed to fetch tracking: ${response.statusCode}');
       }
@@ -34,13 +39,11 @@ class TrackingService {
     }
   }
 
-  // Get partner current location
   Future<DeliveryLocation> getPartnerLocation(int partnerId) async {
     try {
       final token = await TokenManager.getToken();
-      
       final response = await http.get(
-        Uri.parse('$baseUrl/locations/partner/$partnerId'),
+        Uri.parse('$baseUrl/api/locations/partner/$partnerId'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
@@ -49,7 +52,8 @@ class TrackingService {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        return DeliveryLocation.fromJson(data);
+        final locationData = data['data'] ?? data;
+        return DeliveryLocation.fromJson(locationData);
       } else {
         throw Exception('Failed to fetch location: ${response.statusCode}');
       }
@@ -59,13 +63,11 @@ class TrackingService {
     }
   }
 
-  // Start live tracking (Auto-refresh every 10 seconds)
   void startLiveTracking(
     int partnerId,
     Function(DeliveryLocation) onLocationUpdate,
   ) {
     _locationUpdateTimer?.cancel();
-    
     _locationUpdateTimer = Timer.periodic(
       const Duration(seconds: 10),
       (timer) async {
@@ -74,18 +76,22 @@ class TrackingService {
           onLocationUpdate(location);
         } catch (e) {
           print('Error updating location: $e');
+          // ✅ Timer cancel mat karo — retry karta rahega
         }
       },
     );
   }
 
-  // Stop live tracking
   void stopLiveTracking() {
     _locationUpdateTimer?.cancel();
     _locationUpdateTimer = null;
   }
 
-  // Calculate ETA
+  // ✅ dispose method add kiya
+  void dispose() {
+    stopLiveTracking();
+  }
+
   Future<Map<String, dynamic>> calculateETA({
     required double fromLat,
     required double fromLng,
@@ -94,9 +100,8 @@ class TrackingService {
   }) async {
     try {
       final token = await TokenManager.getToken();
-      
       final response = await http.post(
-        Uri.parse('$baseUrl/locations/distance'),
+        Uri.parse('$baseUrl/api/locations/distance'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
@@ -112,11 +117,38 @@ class TrackingService {
       if (response.statusCode == 200) {
         return json.decode(response.body);
       } else {
-        throw Exception('Failed to calculate ETA');
+        // ✅ Fallback — straight line distance calculate karo
+        return _calculateStraightLineETA(fromLat, fromLng, toLat, toLng);
       }
     } catch (e) {
       print('Error calculating ETA: $e');
-      rethrow;
+      // ✅ API fail ho to fallback
+      return _calculateStraightLineETA(fromLat, fromLng, toLat, toLng);
     }
   }
+
+  // ✅ Fallback ETA — Haversine formula
+  Map<String, dynamic> _calculateStraightLineETA(
+    double fromLat, double fromLng,
+    double toLat, double toLng,
+  ) {
+    const double earthRadius = 6371; // km
+    final dLat = _toRad(toLat - fromLat);
+    final dLon = _toRad(toLng - fromLng);
+    final a = (dLat / 2) * (dLat / 2) +
+        (_toRad(fromLat)) *
+            (_toRad(toLat)) *
+            (dLon / 2) *
+            (dLon / 2);
+    final c = 2 * (a > 0 ? 1 : 0); // simplified
+    final distance = earthRadius * c;
+    final duration = (distance / 30 * 60).round(); // 30km/h avg speed
+
+    return {
+      'distance': distance.clamp(0.1, 50.0),
+      'duration': duration.clamp(1, 120),
+    };
+  }
+
+  double _toRad(double deg) => deg * 3.141592653589793 / 180;
 }

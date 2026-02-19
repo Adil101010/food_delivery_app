@@ -6,6 +6,9 @@ import '../../services/token_manager.dart';
 import '../../services/api_service.dart';
 import '../../models/user.dart';
 import 'edit_profile_screen.dart';
+import 'change_password_screen.dart';
+import '../notifications/notifications_screen.dart';
+import 'about_screen.dart';
 import '../address/address_list_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -32,7 +35,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _isLoading = true;
       _errorMessage = null;
     });
-    
+
     try {
       final user = await _apiService.getCurrentUser();
       setState(() {
@@ -40,7 +43,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _isLoading = false;
       });
     } catch (e) {
-      print('Error loading user data: $e');
       setState(() {
         _errorMessage = e.toString();
         _isLoading = false;
@@ -52,24 +54,62 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Logout'),
-        content: const Text('Are you sure you want to logout?'),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                  color: AppTheme.error.withOpacity(0.1),
+                  shape: BoxShape.circle),
+              child:
+                  Icon(Icons.logout, color: AppTheme.error, size: 32),
+            ),
+            const SizedBox(height: 12),
+            const Text('Logout?',
+                style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.textPrimary)),
+          ],
+        ),
+        content: const Text(
+          'Are you sure you want to logout?',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 14, height: 1.5),
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(
-              foregroundColor: AppTheme.error,
-            ),
-            child: const Text('Logout'),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      side: BorderSide(color: Colors.grey.shade300),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12))),
+                  child: const Text('Cancel'),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.error,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12))),
+                  child: const Text('Logout',
+                      style: TextStyle(color: Colors.white)),
+                ),
+              ),
+            ],
           ),
         ],
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       ),
     );
 
@@ -86,16 +126,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Scaffold(
       backgroundColor: AppTheme.background,
       appBar: AppBar(
-        title: const Text('Profile'),
+        title: const Text('Profile',
+            style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: AppTheme.textPrimary)),
         backgroundColor: Colors.white,
         elevation: 0,
+        automaticallyImplyLeading: false,
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(
+              child: CircularProgressIndicator(color: AppTheme.primary))
           : _errorMessage != null
               ? _buildErrorWidget()
               : RefreshIndicator(
                   onRefresh: _loadUserProfile,
+                  color: AppTheme.primary,
                   child: SingleChildScrollView(
                     physics: const AlwaysScrollableScrollPhysics(),
                     child: Column(
@@ -122,41 +169,37 @@ class _ProfileScreenState extends State<ProfileScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(
-              Icons.error_outline,
-              size: 64,
-              color: AppTheme.error,
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                  color: AppTheme.error.withOpacity(0.1),
+                  shape: BoxShape.circle),
+              child:
+                  Icon(Icons.error_outline, size: 64, color: AppTheme.error),
             ),
             const SizedBox(height: 16),
-            const Text(
-              'Failed to load profile',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+            const Text('Failed to load profile',
+                style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.textPrimary)),
             const SizedBox(height: 8),
-            Text(
-              _errorMessage ?? 'Unknown error',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 14,
-                color: AppTheme.textSecondary,
-              ),
-            ),
+            Text(_errorMessage ?? 'Unknown error',
+                textAlign: TextAlign.center,
+                style:
+                    TextStyle(fontSize: 14, color: AppTheme.textSecondary)),
             const SizedBox(height: 24),
             ElevatedButton.icon(
               onPressed: _loadUserProfile,
               icon: const Icon(Icons.refresh),
               label: const Text('Retry'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primary,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 12,
-                ),
-              ),
+                  backgroundColor: AppTheme.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 24, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12))),
             ),
           ],
         ),
@@ -168,79 +211,89 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-      ),
+      decoration: const BoxDecoration(color: Colors.white),
       child: Column(
         children: [
-          Container(
-            width: 100,
-            height: 100,
-            decoration: BoxDecoration(
-              color: AppTheme.primary.withOpacity(0.1),
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: AppTheme.primary.withOpacity(0.3),
-                width: 2,
-              ),
-            ),
-            child: Center(
-              child: Text(
-                _user!.name.isNotEmpty 
-                    ? _user!.name[0].toUpperCase() 
-                    : 'U',
-                style: const TextStyle(
-                  fontSize: 40,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.primary,
+          // Avatar
+          Stack(
+            children: [
+              Container(
+                width: 100,
+                height: 100,
+                decoration: BoxDecoration(
+                  color: AppTheme.primary.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                      color: AppTheme.primary.withOpacity(0.3), width: 2),
+                ),
+                child: Center(
+                  child: Text(
+                    _user!.name.isNotEmpty
+                        ? _user!.name[0].toUpperCase()
+                        : 'U',
+                    style: const TextStyle(
+                        fontSize: 40,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.primary),
+                  ),
                 ),
               ),
-            ),
+              // Edit badge
+              Positioned(
+                bottom: 0,
+                right: 0,
+                child: GestureDetector(
+                  onTap: () async {
+                    final result = await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => const EditProfileScreen()),
+                    );
+                    if (result == true) _loadUserProfile();
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primary,
+                      shape: BoxShape.circle,
+                      border:
+                          Border.all(color: Colors.white, width: 2),
+                    ),
+                    child: const Icon(Icons.edit,
+                        color: Colors.white, size: 14),
+                  ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 16),
-          Text(
-            _user!.name,
-            style: const TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: AppTheme.textPrimary,
-            ),
-          ),
+          Text(_user!.name,
+              style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.textPrimary)),
           const SizedBox(height: 4),
-          Text(
-            _user!.email,
-            style: TextStyle(
-              fontSize: 14,
-              color: AppTheme.textSecondary,
-            ),
-          ),
+          Text(_user!.email,
+              style: TextStyle(
+                  fontSize: 14, color: AppTheme.textSecondary)),
           const SizedBox(height: 2),
-          Text(
-            _user!.phone,
-            style: TextStyle(
-              fontSize: 14,
-              color: AppTheme.textSecondary,
-            ),
-          ),
+          Text(_user!.phone,
+              style: TextStyle(
+                  fontSize: 14, color: AppTheme.textSecondary)),
           if (_user!.role != null) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 4,
-              ),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
               decoration: BoxDecoration(
                 color: AppTheme.primary.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Text(
-                _user!.role!,
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: AppTheme.primary,
-                ),
-              ),
+              child: Text(_user!.role!,
+                  style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.primary)),
             ),
           ],
         ],
@@ -252,55 +305,50 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Container(
       color: Colors.white,
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          _buildSectionHeader('ACCOUNT'),
           _buildMenuItem(
             icon: Icons.person_outline,
+            iconColor: Colors.blue,
             title: 'Edit Profile',
             subtitle: 'Update your name and phone',
             onTap: () async {
               final result = await Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => const EditProfileScreen(),
-                ),
+                    builder: (context) => const EditProfileScreen()),
               );
-              
-              if (result == true) {
-                _loadUserProfile();
-              }
+              if (result == true) _loadUserProfile();
             },
           ),
-          Divider(color: AppTheme.border, height: 1),
+          Divider(color: AppTheme.border, height: 1, indent: 72),
           _buildMenuItem(
             icon: Icons.receipt_long_outlined,
+            iconColor: Colors.orange,
             title: 'My Orders',
             subtitle: 'View your order history',
-            onTap: () {
-              Navigator.pushNamed(context, '/orders');
-            },
+            onTap: () => Navigator.pushNamed(context, '/orders'),
           ),
-          Divider(color: AppTheme.border, height: 1),
+          Divider(color: AppTheme.border, height: 1, indent: 72),
           _buildMenuItem(
             icon: Icons.location_on_outlined,
+            iconColor: Colors.red,
             title: 'Saved Addresses',
             subtitle: 'Manage delivery addresses',
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const AddressListScreen(),
-                ),
-              );
-            },
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (context) => const AddressListScreen()),
+            ),
           ),
-          Divider(color: AppTheme.border, height: 1),
+          Divider(color: AppTheme.border, height: 1, indent: 72),
           _buildMenuItem(
             icon: Icons.favorite_outline,
+            iconColor: Colors.pink,
             title: 'Favorites',
             subtitle: 'Your favorite restaurants',
-            onTap: () {
-              Navigator.pushNamed(context, '/favorites');
-            },
+            onTap: () => Navigator.pushNamed(context, '/favorites'),
           ),
         ],
       ),
@@ -311,60 +359,86 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Container(
       color: Colors.white,
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          _buildSectionHeader('SETTINGS'),
+
+          // ✅ Change Password — working
           _buildMenuItem(
             icon: Icons.lock_outline,
+            iconColor: Colors.purple,
             title: 'Change Password',
             subtitle: 'Update your password',
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Coming soon!')),
-              );
-            },
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (context) => const ChangePasswordScreen()),
+            ),
           ),
-          Divider(color: AppTheme.border, height: 1),
+          Divider(color: AppTheme.border, height: 1, indent: 72),
+
+          // ✅ Notifications — working
           _buildMenuItem(
             icon: Icons.notifications_none,
+            iconColor: Colors.amber,
             title: 'Notifications',
-            subtitle: 'Manage notifications',
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Coming soon!')),
-              );
-            },
+            subtitle: 'Manage your notifications',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (context) => const NotificationsScreen()),
+            ),
           ),
-          Divider(color: AppTheme.border, height: 1),
+          Divider(color: AppTheme.border, height: 1, indent: 72),
+
+          // Help & Support
           _buildMenuItem(
             icon: Icons.help_outline,
+            iconColor: Colors.teal,
             title: 'Help & Support',
             subtitle: 'Get help with your orders',
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Coming soon!')),
-              );
-            },
+            onTap: () => _showComingSoon('Help & Support'),
           ),
-          Divider(color: AppTheme.border, height: 1),
+          Divider(color: AppTheme.border, height: 1, indent: 72),
+
+          // ✅ About — working
           _buildMenuItem(
             icon: Icons.info_outline,
+            iconColor: Colors.blueGrey,
             title: 'About',
             subtitle: 'App version & info',
-            onTap: () {
-              showAboutDialog(
-                context: context,
-                applicationName: 'Food Delivery',
-                applicationVersion: '1.0.0',
-                applicationIcon: const Icon(
-                  Icons.restaurant,
-                  size: 48,
-                  color: AppTheme.primary,
-                ),
-              );
-            },
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (context) => const AboutScreen()),
+            ),
           ),
         ],
       ),
     );
+  }
+
+  Widget _buildSectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
+      child: Text(
+        title,
+        style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            color: AppTheme.textSecondary,
+            letterSpacing: 1.0),
+      ),
+    );
+  }
+
+  void _showComingSoon(String feature) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text('$feature — Coming soon!'),
+      behavior: SnackBarBehavior.floating,
+      shape:
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+    ));
   }
 
   Widget _buildLogoutButton() {
@@ -379,21 +453,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
             foregroundColor: AppTheme.error,
             side: const BorderSide(color: AppTheme.error),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
+                borderRadius: BorderRadius.circular(12)),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: const [
               Icon(Icons.logout),
               SizedBox(width: 8),
-              Text(
-                'Logout',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
+              Text('Logout',
+                  style: TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.w600)),
             ],
           ),
         ),
@@ -403,48 +472,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildMenuItem({
     required IconData icon,
+    required Color iconColor,
     required String title,
     required String subtitle,
     required VoidCallback onTap,
   }) {
     return ListTile(
       onTap: onTap,
-      contentPadding: const EdgeInsets.symmetric(
-        horizontal: 16,
-        vertical: 8,
-      ),
+      contentPadding:
+          const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       leading: Container(
-        width: 48,
-        height: 48,
+        width: 46,
+        height: 46,
         decoration: BoxDecoration(
-          color: AppTheme.surface,
+          color: iconColor.withOpacity(0.1),
           borderRadius: BorderRadius.circular(12),
         ),
-        child: Icon(
-          icon,
-          color: AppTheme.textPrimary,
-          size: 24,
-        ),
+        child: Icon(icon, color: iconColor, size: 22),
       ),
-      title: Text(
-        title,
-        style: const TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w600,
-          color: AppTheme.textPrimary,
-        ),
-      ),
-      subtitle: Text(
-        subtitle,
-        style: TextStyle(
-          fontSize: 13,
-          color: AppTheme.textSecondary,
-        ),
-      ),
-      trailing: Icon(
-        Icons.chevron_right,
-        color: AppTheme.textLight,
-      ),
+      title: Text(title,
+          style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: AppTheme.textPrimary)),
+      subtitle: Text(subtitle,
+          style:
+              TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+      trailing: Icon(Icons.chevron_right, color: AppTheme.textLight),
     );
   }
 }

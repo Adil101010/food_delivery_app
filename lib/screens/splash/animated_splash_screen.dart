@@ -1,3 +1,5 @@
+// lib/screens/splash/animated_splash_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 import '../../config/app_theme.dart';
@@ -11,10 +13,13 @@ class AnimatedSplashScreen extends StatefulWidget {
 }
 
 class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late VideoPlayerController _videoController;
   late AnimationController _fadeController;
+  late AnimationController _fadeOutController; // ✅ buffer fix
+
   bool _isVideoInitialized = false;
+  bool _hasNavigated = false; // ✅ double navigate prevent
 
   @override
   void initState() {
@@ -25,66 +30,84 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
       vsync: this,
     );
 
+    // ✅ Video end pe black fade out
+    _fadeOutController = AnimationController(
+      duration: const Duration(milliseconds: 600),
+      vsync: this,
+    );
+
     _initializeVideo();
   }
 
   Future<void> _initializeVideo() async {
     try {
-      // Initialize video from assets
       _videoController = VideoPlayerController.asset(
         'assets/videos/splash_video.mp4',
       );
 
       await _videoController.initialize();
-      
+
+      if (!mounted) return;
+
       setState(() => _isVideoInitialized = true);
-      
-      // Play video
+
+      // ✅ Slow motion 75%
+      await _videoController.setPlaybackSpeed(0.75);
+
       _videoController.play();
       _fadeController.forward();
 
-      // Listen for video completion
-      _videoController.addListener(() {
-        if (_videoController.value.position >= _videoController.value.duration) {
-          _navigateNext();
-        }
-      });
+      // ✅ Video progress listener
+      _videoController.addListener(_onVideoProgress);
 
-      // Fallback: Navigate after 3 seconds even if video is longer
-      Future.delayed(const Duration(seconds: 3), () {
-        if (mounted) {
-          _navigateNext();
-        }
-      });
+      // Safety fallback
+      Future.delayed(const Duration(seconds: 8), () => _navigateNext());
     } catch (e) {
       print('Video initialization error: $e');
-      // If video fails, navigate after 2 seconds
-      Future.delayed(const Duration(seconds: 2), () {
-        if (mounted) {
-          _navigateNext();
-        }
-      });
+      Future.delayed(const Duration(seconds: 3), () => _navigateNext());
+    }
+  }
+
+  // ✅ Video end se 600ms pehle fade out start karo
+  void _onVideoProgress() {
+    if (!mounted || !_videoController.value.isInitialized) return;
+
+    final position = _videoController.value.position;
+    final duration = _videoController.value.duration;
+
+    if (duration.inMilliseconds > 0 &&
+        position.inMilliseconds >= duration.inMilliseconds - 600 &&
+        !_hasNavigated) {
+      _navigateNext();
     }
   }
 
   Future<void> _navigateNext() async {
+    if (!mounted || _hasNavigated) return;
+    _hasNavigated = true;
+
+    // ✅ Pehle black fade out, phir navigate
+    await _fadeOutController.forward();
+
     if (!mounted) return;
 
     final isLoggedIn = await TokenManager.isLoggedIn();
 
-    if (mounted) {
-      if (isLoggedIn) {
-        Navigator.pushReplacementNamed(context, '/home');
-      } else {
-        Navigator.pushReplacementNamed(context, '/login');
-      }
+    if (!mounted) return;
+
+    if (isLoggedIn) {
+      Navigator.pushReplacementNamed(context, '/home');
+    } else {
+      Navigator.pushReplacementNamed(context, '/login');
     }
   }
 
   @override
   void dispose() {
+    _videoController.removeListener(_onVideoProgress);
     _videoController.dispose();
     _fadeController.dispose();
+    _fadeOutController.dispose();
     super.dispose();
   }
 
@@ -95,7 +118,8 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // Video Background
+
+          // ── 1. Video Background ─────────────────────────
           if (_isVideoInitialized)
             FittedBox(
               fit: BoxFit.cover,
@@ -106,18 +130,10 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
               ),
             )
           else
-            // Loading placeholder
-            Container(
-              color: Colors.black,
-              child: Center(
-                child: CircularProgressIndicator(
-                  color: AppTheme.primary,
-                  strokeWidth: 3,
-                ),
-              ),
-            ),
+            // Video load hone tak — plain black (koi spinner nahi)
+            Container(color: Colors.black),
 
-          // Dark overlay
+          // ── 2. Dark Overlay ─────────────────────────────
           Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -131,7 +147,7 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
             ),
           ),
 
-          // App branding overlay
+          // ── 3. Branding — Logo + Text ───────────────────
           FadeTransition(
             opacity: _fadeController,
             child: SafeArea(
@@ -139,7 +155,7 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
                 children: [
                   const Spacer(),
 
-                  // App Logo
+                  // Logo
                   Container(
                     width: 120,
                     height: 120,
@@ -184,7 +200,7 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
                   const SizedBox(height: 12),
 
                   const Text(
-                    'Delivering Happiness 🚀',
+                    'Delivering Happiness',
                     style: TextStyle(
                       fontSize: 18,
                       color: Colors.white,
@@ -199,23 +215,22 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
                     ),
                   ),
 
-                  const SizedBox(height: 60),
-
-                  // Loading indicator
-                  SizedBox(
-                    width: 40,
-                    height: 40,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 3,
-                      valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
-                      backgroundColor: Colors.white.withOpacity(0.3),
-                    ),
-                  ),
-
-                  const SizedBox(height: 60),
+                  // ✅ Koi CircularProgressIndicator NAHI
+                  const SizedBox(height: 80),
                 ],
               ),
             ),
+          ),
+
+          // ── 4. ✅ Black Fade Out — Buffer Fix ───────────
+          AnimatedBuilder(
+            animation: _fadeOutController,
+            builder: (context, child) {
+              return Opacity(
+                opacity: _fadeOutController.value,
+                child: Container(color: Colors.black),
+              );
+            },
           ),
         ],
       ),

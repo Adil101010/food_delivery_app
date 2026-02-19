@@ -18,75 +18,83 @@ class OrderTrackingScreen extends StatefulWidget {
 class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
   final TrackingService _trackingService = TrackingService();
   GoogleMapController? _mapController;
-  
+
   DeliveryTracking? _tracking;
   bool _isLoading = true;
+  String? _errorMessage;
   Set<Marker> _markers = {};
   Set<Polyline> _polylines = {};
-  
+
   String _eta = 'Calculating...';
   double _distance = 0.0;
+
+  // ✅ Status polling timer (refreshes every 30s)
+  Timer? _statusPollTimer;
 
   @override
   void initState() {
     super.initState();
     _loadTrackingData();
+    // ✅ Poll order status every 30 seconds
+    _statusPollTimer = Timer.periodic(
+      const Duration(seconds: 30),
+      (_) => _loadTrackingData(silent: true),
+    );
   }
 
   @override
   void dispose() {
     _trackingService.dispose();
     _mapController?.dispose();
+    _statusPollTimer?.cancel();
     super.dispose();
   }
 
-  Future<void> _loadTrackingData() async {
+  Future<void> _loadTrackingData({bool silent = false}) async {
+    if (!silent) setState(() => _isLoading = true);
+
     try {
-      final tracking = await _trackingService.getDeliveryTracking(widget.orderId);
-      
+      final tracking =
+          await _trackingService.getDeliveryTracking(widget.orderId);
+
+      if (!mounted) return;
       setState(() {
         _tracking = tracking;
         _isLoading = false;
+        _errorMessage = null;
       });
 
       _updateMapMarkers();
-      _calculateETA();
-      
-      // Start live tracking
-      if (tracking.status == 'PICKED_UP' || tracking.status == 'OUT_FOR_DELIVERY') {
-        _trackingService.startLiveTracking(
-          tracking.partnerId,
-          (location) {
-            setState(() {
-              _tracking = DeliveryTracking(
-                deliveryId: tracking.deliveryId,
-                orderId: tracking.orderId,
-                partnerId: tracking.partnerId,
-                partnerName: tracking.partnerName,
-                partnerPhone: tracking.partnerPhone,
-                status: tracking.status,
-                currentLocation: location,
-                pickupLocation: tracking.pickupLocation,
-                dropLocation: tracking.dropLocation,
-                estimatedDeliveryTime: tracking.estimatedDeliveryTime,
-                actualDeliveryTime: tracking.actualDeliveryTime,
-                statusHistory: tracking.statusHistory,
-              );
-            });
-            _updateMapMarkers();
-            _calculateETA();
-          },
-        );
+
+      if (tracking.currentLocation != null) {
+        _calculateETA();
+      }
+
+      // ✅ Start live tracking only for active deliveries
+      if (tracking.status == 'PICKED_UP' ||
+          tracking.status == 'OUT_FOR_DELIVERY') {
+        _trackingService.startLiveTracking(tracking.partnerId, (location) {
+          if (!mounted) return;
+          setState(() {
+            _tracking = _tracking!.copyWith(currentLocation: location);
+          });
+          _updateMapMarkers();
+          _calculateETA();
+        });
+      } else {
+        _trackingService.stopLiveTracking();
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
+        if (!silent) _errorMessage = e.toString();
       });
-      
-      if (mounted) {
+
+      if (!silent) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to load tracking: ${e.toString()}'),
+            content: Text('Tracking not available: ${e.toString()}'),
             backgroundColor: Colors.red,
           ),
         );
@@ -99,54 +107,43 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
 
     final markers = <Marker>{};
 
-    // Restaurant marker
-    markers.add(
-      Marker(
-        markerId: const MarkerId('restaurant'),
-        position: LatLng(
-          _tracking!.pickupLocation.latitude,
-          _tracking!.pickupLocation.longitude,
-        ),
-        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange),
-        infoWindow: const InfoWindow(title: 'Restaurant'),
+    markers.add(Marker(
+      markerId: const MarkerId('restaurant'),
+      position: LatLng(
+        _tracking!.pickupLocation.latitude,
+        _tracking!.pickupLocation.longitude,
       ),
-    );
+      icon:
+          BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange),
+      infoWindow: const InfoWindow(title: '🍴 Restaurant'),
+    ));
 
-    // Delivery location marker
-    markers.add(
-      Marker(
-        markerId: const MarkerId('delivery'),
-        position: LatLng(
-          _tracking!.dropLocation.latitude,
-          _tracking!.dropLocation.longitude,
-        ),
-        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
-        infoWindow: const InfoWindow(title: 'Delivery Location'),
+    markers.add(Marker(
+      markerId: const MarkerId('delivery'),
+      position: LatLng(
+        _tracking!.dropLocation.latitude,
+        _tracking!.dropLocation.longitude,
       ),
-    );
+      icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
+      infoWindow: const InfoWindow(title: '🏠 Your Location'),
+    ));
 
-    // Delivery partner marker (if available)
     if (_tracking!.currentLocation != null) {
-      markers.add(
-        Marker(
-          markerId: const MarkerId('partner'),
-          position: LatLng(
-            _tracking!.currentLocation!.latitude,
-            _tracking!.currentLocation!.longitude,
-          ),
-          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
-          infoWindow: InfoWindow(title: _tracking!.partnerName),
+      markers.add(Marker(
+        markerId: const MarkerId('partner'),
+        position: LatLng(
+          _tracking!.currentLocation!.latitude,
+          _tracking!.currentLocation!.longitude,
         ),
-      );
+        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
+        infoWindow: InfoWindow(title: '🛵 ${_tracking!.partnerName}'),
+      ));
     }
 
-    setState(() {
-      _markers = markers;
-    });
+    if (mounted) setState(() => _markers = markers);
 
-    // Move camera to show all markers
     if (_mapController != null && markers.isNotEmpty) {
-      _fitMapToMarkers();
+      Future.delayed(const Duration(milliseconds: 300), _fitMapToMarkers);
     }
   }
 
@@ -168,10 +165,10 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
     _mapController!.animateCamera(
       CameraUpdate.newLatLngBounds(
         LatLngBounds(
-          southwest: LatLng(minLat, minLng),
-          northeast: LatLng(maxLat, maxLng),
+          southwest: LatLng(minLat - 0.005, minLng - 0.005),
+          northeast: LatLng(maxLat + 0.005, maxLng + 0.005),
         ),
-        100, // padding
+        80,
       ),
     );
   }
@@ -187,70 +184,62 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
         toLng: _tracking!.dropLocation.longitude,
       );
 
+      if (!mounted) return;
       setState(() {
-        _distance = result['distance'] ?? 0.0;
+        _distance = (result['distance'] ?? 0.0).toDouble();
         final duration = result['duration'] ?? 0;
         _eta = '$duration mins';
       });
     } catch (e) {
-      print('Error calculating ETA: $e');
+      print('ETA error: $e');
     }
   }
 
   Future<void> _makePhoneCall() async {
-    if (_tracking == null) return;
-    
+    if (_tracking?.partnerPhone.isEmpty ?? true) return;
     final Uri phoneUri = Uri(scheme: 'tel', path: _tracking!.partnerPhone);
     if (await canLaunchUrl(phoneUri)) {
       await launchUrl(phoneUri);
     }
   }
 
+  // ================================================================
+  //  BUILD
+  // ================================================================
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
       return Scaffold(
-        appBar: AppBar(
-          title: const Text('Order Tracking'),
-          backgroundColor: AppTheme.primary,
-          foregroundColor: Colors.white,
-        ),
-        body: const Center(
-          child: CircularProgressIndicator(),
-        ),
+        appBar: _buildAppBar(),
+        body: const Center(child: CircularProgressIndicator()),
       );
     }
 
-    if (_tracking == null) {
+    // ✅ Nice error state — order still PENDING
+    if (_tracking == null || _errorMessage != null) {
       return Scaffold(
-        appBar: AppBar(
-          title: const Text('Order Tracking'),
-          backgroundColor: AppTheme.primary,
-          foregroundColor: Colors.white,
-        ),
-        body: const Center(
-          child: Text('Failed to load tracking information'),
-        ),
+        appBar: _buildAppBar(),
+        body: _buildPendingState(),
       );
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Track Order'),
-        backgroundColor: AppTheme.primary,
-        foregroundColor: Colors.white,
-        elevation: 0,
-      ),
+      appBar: _buildAppBar(),
       body: Column(
         children: [
-          // Map View
+          // ✅ Status banner at top
+          _buildStatusBanner(),
+
+          // Map
           Expanded(
             flex: 3,
             child: GoogleMap(
               initialCameraPosition: CameraPosition(
                 target: LatLng(
-                  _tracking!.currentLocation?.latitude ?? _tracking!.pickupLocation.latitude,
-                  _tracking!.currentLocation?.longitude ?? _tracking!.pickupLocation.longitude,
+                  _tracking!.currentLocation?.latitude ??
+                      _tracking!.pickupLocation.latitude,
+                  _tracking!.currentLocation?.longitude ??
+                      _tracking!.pickupLocation.longitude,
                 ),
                 zoom: 14,
               ),
@@ -258,15 +247,17 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
               polylines: _polylines,
               onMapCreated: (controller) {
                 _mapController = controller;
-                _fitMapToMarkers();
+                Future.delayed(
+                  const Duration(milliseconds: 500),
+                  _fitMapToMarkers,
+                );
               },
-              myLocationButtonEnabled: true,
-              myLocationEnabled: true,
+              myLocationButtonEnabled: false,
               zoomControlsEnabled: false,
             ),
           ),
 
-          // Tracking Info
+          // Bottom info panel
           Expanded(
             flex: 2,
             child: Container(
@@ -283,7 +274,6 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
               ),
               child: Column(
                 children: [
-                  // Drag Handle
                   Container(
                     margin: const EdgeInsets.only(top: 12),
                     width: 40,
@@ -293,24 +283,18 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
-
                   Expanded(
                     child: SingleChildScrollView(
                       padding: const EdgeInsets.all(20),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Status Timeline
                           _buildStatusTimeline(),
-
-                          const SizedBox(height: 24),
-
-                          // ETA Card
-                          _buildETACard(),
-
                           const SizedBox(height: 20),
-
-                          // Delivery Partner Info
+                          if (_tracking!.currentLocation != null) ...[
+                            _buildETACard(),
+                            const SizedBox(height: 16),
+                          ],
                           _buildPartnerInfo(),
                         ],
                       ),
@@ -325,6 +309,164 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
     );
   }
 
+  AppBar _buildAppBar() {
+    return AppBar(
+      title: Text('Order #${widget.orderId}'),
+      backgroundColor: AppTheme.primary,
+      foregroundColor: Colors.white,
+      elevation: 0,
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.refresh),
+          onPressed: () => _loadTrackingData(),
+        ),
+      ],
+    );
+  }
+
+  // ✅ Pending/No tracking state
+  Widget _buildPendingState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: AppTheme.primary.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.delivery_dining_outlined,
+                size: 80,
+                color: AppTheme.primary,
+              ),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Preparing Your Order',
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Your order is being prepared.\nTracking will be available once a delivery partner is assigned.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey.shade600,
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 32),
+            // Auto refresh indicator
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: AppTheme.primary,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  'Auto-refreshing every 30s',
+                  style: TextStyle(
+                    color: Colors.grey.shade500,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: () => _loadTrackingData(),
+              icon: const Icon(Icons.refresh),
+              label: const Text('Refresh Now'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 32, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ✅ Colored status banner
+  Widget _buildStatusBanner() {
+    final statusConfig = _getStatusConfig(_tracking!.status);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+      color: statusConfig['color'] as Color,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(statusConfig['icon'] as IconData,
+              color: Colors.white, size: 18),
+          const SizedBox(width: 8),
+          Text(
+            statusConfig['label'] as String,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+              fontSize: 14,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Map<String, dynamic> _getStatusConfig(String status) {
+    switch (status) {
+      case 'ASSIGNED':
+        return {
+          'label': 'Partner Assigned — Heading to Restaurant',
+          'icon': Icons.person,
+          'color': Colors.blue,
+        };
+      case 'PICKED_UP':
+        return {
+          'label': 'Food Picked Up!',
+          'icon': Icons.shopping_bag,
+          'color': Colors.orange,
+        };
+      case 'OUT_FOR_DELIVERY':
+        return {
+          'label': 'Out for Delivery — Almost There!',
+          'icon': Icons.delivery_dining,
+          'color': AppTheme.primary,
+        };
+      case 'DELIVERED':
+        return {
+          'label': '✅ Delivered Successfully!',
+          'icon': Icons.check_circle,
+          'color': Colors.green,
+        };
+      default:
+        return {
+          'label': 'Order Confirmed',
+          'icon': Icons.receipt,
+          'color': Colors.grey,
+        };
+    }
+  }
+
   Widget _buildStatusTimeline() {
     final statuses = [
       {'status': 'PENDING', 'label': 'Order Placed', 'icon': Icons.receipt},
@@ -334,24 +476,24 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
       {'status': 'DELIVERED', 'label': 'Delivered', 'icon': Icons.check_circle},
     ];
 
-    final currentIndex = statuses.indexWhere((s) => s['status'] == _tracking!.status);
+    final currentIndex =
+        statuses.indexWhere((s) => s['status'] == _tracking!.status);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
           'Order Status',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 16),
         ...List.generate(statuses.length, (index) {
           final isActive = index <= currentIndex;
+          final isCurrent = index == currentIndex;
           final status = statuses[index];
 
           return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Column(
                 children: [
@@ -359,34 +501,72 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                     width: 40,
                     height: 40,
                     decoration: BoxDecoration(
-                      color: isActive ? AppTheme.primary : Colors.grey.shade300,
+                      color: isActive
+                          ? (isCurrent ? AppTheme.primary : Colors.green)
+                          : Colors.grey.shade200,
                       shape: BoxShape.circle,
+                      border: isCurrent
+                          ? Border.all(
+                              color: AppTheme.primary.withOpacity(0.3),
+                              width: 3)
+                          : null,
                     ),
                     child: Icon(
                       status['icon'] as IconData,
-                      color: Colors.white,
+                      color: isActive ? Colors.white : Colors.grey,
                       size: 20,
                     ),
                   ),
                   if (index < statuses.length - 1)
                     Container(
                       width: 2,
-                      height: 30,
-                      color: isActive ? AppTheme.primary : Colors.grey.shade300,
+                      height: 32,
+                      color: index < currentIndex
+                          ? Colors.green
+                          : Colors.grey.shade200,
                     ),
                 ],
               ),
               const SizedBox(width: 16),
               Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.only(bottom: 24),
-                  child: Text(
-                    status['label'] as String,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
-                      color: isActive ? AppTheme.textPrimary : Colors.grey,
-                    ),
+                  padding: const EdgeInsets.only(top: 8, bottom: 24),
+                  child: Row(
+                    children: [
+                      Text(
+                        status['label'] as String,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: isCurrent
+                              ? FontWeight.w700
+                              : (isActive
+                                  ? FontWeight.w500
+                                  : FontWeight.normal),
+                          color: isActive
+                              ? AppTheme.textPrimary
+                              : Colors.grey,
+                        ),
+                      ),
+                      if (isCurrent) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppTheme.primary,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Text(
+                            'NOW',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
               ),
@@ -411,8 +591,8 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
         children: [
           Column(
             children: [
-              const Icon(Icons.access_time, color: Colors.white, size: 32),
-              const SizedBox(height: 8),
+              const Icon(Icons.access_time, color: Colors.white, size: 28),
+              const SizedBox(height: 6),
               Text(
                 _eta,
                 style: const TextStyle(
@@ -421,21 +601,15 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              const Text(
-                'ETA',
-                style: TextStyle(color: Colors.white70, fontSize: 12),
-              ),
+              const Text('ETA',
+                  style: TextStyle(color: Colors.white70, fontSize: 12)),
             ],
           ),
-          Container(
-            width: 1,
-            height: 60,
-            color: Colors.white30,
-          ),
+          Container(width: 1, height: 50, color: Colors.white30),
           Column(
             children: [
-              const Icon(Icons.location_on, color: Colors.white, size: 32),
-              const SizedBox(height: 8),
+              const Icon(Icons.location_on, color: Colors.white, size: 28),
+              const SizedBox(height: 6),
               Text(
                 '${_distance.toStringAsFixed(1)} km',
                 style: const TextStyle(
@@ -444,10 +618,8 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              const Text(
-                'Distance',
-                style: TextStyle(color: Colors.white70, fontSize: 12),
-              ),
+              const Text('Distance',
+                  style: TextStyle(color: Colors.white70, fontSize: 12)),
             ],
           ),
         ],
@@ -459,24 +631,27 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.grey.shade100,
+        color: Colors.grey.shade50,
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade200),
       ),
       child: Row(
         children: [
           CircleAvatar(
-            radius: 30,
+            radius: 28,
             backgroundColor: AppTheme.primary,
             child: Text(
-              _tracking!.partnerName[0].toUpperCase(),
+              _tracking!.partnerName.isNotEmpty
+                  ? _tracking!.partnerName[0].toUpperCase()
+                  : 'D',
               style: const TextStyle(
                 color: Colors.white,
-                fontSize: 24,
+                fontSize: 22,
                 fontWeight: FontWeight.bold,
               ),
             ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -488,24 +663,37 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 2),
                 const Text(
                   'Delivery Partner',
-                  style: TextStyle(
-                    color: Colors.grey,
-                    fontSize: 12,
-                  ),
+                  style: TextStyle(color: Colors.grey, fontSize: 12),
                 ),
               ],
             ),
           ),
-          IconButton(
-            onPressed: _makePhoneCall,
-            icon: const Icon(Icons.phone),
-            style: IconButton.styleFrom(
-              backgroundColor: AppTheme.primary,
-              foregroundColor: Colors.white,
+          // Call button
+          if (_tracking!.partnerPhone.isNotEmpty)
+            GestureDetector(
+              onTap: _makePhoneCall,
+              child: Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.green,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.phone, color: Colors.white, size: 20),
+              ),
             ),
+          const SizedBox(width: 8),
+          // Chat button placeholder
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: AppTheme.primary,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.chat_bubble_outline,
+                color: Colors.white, size: 20),
           ),
         ],
       ),

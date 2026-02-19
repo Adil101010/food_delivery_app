@@ -16,7 +16,7 @@ import 'screens/favorites/favorites_screen.dart';
 import 'screens/notifications/notifications_screen.dart';  
 import 'screens/reviews/user_reviews_screen.dart';
 import 'screens/cart/cart_screen.dart';
-
+import '../screens/address/address_list_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
@@ -59,7 +59,8 @@ class MyApp extends StatelessWidget {
           '/cart': (context) => const CartScreen(),
           '/checkout': (context) => const CheckoutScreen(),
           '/notifications': (context) => const NotificationsScreen(),  
-          '/my-reviews': (context) => const UserReviewsScreen(),       
+          '/my-reviews': (context) => const UserReviewsScreen(),      
+           '/address':       (context) => const AddressListScreen(), 
         },
       ),
     );
