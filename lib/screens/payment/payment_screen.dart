@@ -226,16 +226,19 @@ class _PaymentScreenState extends State<PaymentScreen> {
   // ================================================================
   //  COD PAYMENT ✅ FULLY WORKING
   // ================================================================
-  Future<void> _processCODPayment() async {
+Future<void> _processCODPayment() async {
     setState(() => _isProcessing = true);
 
     try {
-      print('💵 Processing COD for order: ${widget.orderId}');
+      print('Processing COD for order: ${widget.orderId}');
+
+      // ✅ ye do lines add karo
+      final userId = await TokenManager.getUserId();
+      if (userId == null) throw Exception('User not logged in');
 
       final response = await http
           .post(
-            Uri.parse(
-                '${ApiConfig.baseUrl}/api/payments/cod/${widget.orderId}'),
+            Uri.parse('${ApiConfig.baseUrl}/api/payments/cod/${widget.orderId}?userId=$userId'),
             headers: {
               'Authorization': 'Bearer ${await TokenManager.getToken()}',
               'Content-Type': 'application/json',
@@ -243,8 +246,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
           )
           .timeout(const Duration(seconds: 30));
 
-      print(
-          '📥 COD response: ${response.statusCode} - ${response.body}');
+      print('COD response: ${response.statusCode} - ${response.body}');
+
 
       setState(() => _isProcessing = false);
 

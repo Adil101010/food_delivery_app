@@ -16,10 +16,10 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
     with TickerProviderStateMixin {
   late VideoPlayerController _videoController;
   late AnimationController _fadeController;
-  late AnimationController _fadeOutController; // ✅ buffer fix
+  late AnimationController _fadeOutController; //  buffer fix
 
   bool _isVideoInitialized = false;
-  bool _hasNavigated = false; // ✅ double navigate prevent
+  bool _hasNavigated = false; //  double navigate prevent
 
   @override
   void initState() {
@@ -30,7 +30,7 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
       vsync: this,
     );
 
-    // ✅ Video end pe black fade out
+    //  Video end pe black fade out
     _fadeOutController = AnimationController(
       duration: const Duration(milliseconds: 600),
       vsync: this,
@@ -51,13 +51,13 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
 
       setState(() => _isVideoInitialized = true);
 
-      // ✅ Slow motion 75%
+      // Slow motion 75%
       await _videoController.setPlaybackSpeed(0.75);
 
       _videoController.play();
       _fadeController.forward();
 
-      // ✅ Video progress listener
+      //  Video progress listener
       _videoController.addListener(_onVideoProgress);
 
       // Safety fallback
@@ -68,7 +68,7 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
     }
   }
 
-  // ✅ Video end se 600ms pehle fade out start karo
+  //  Video end se 600ms pehle fade out start 
   void _onVideoProgress() {
     if (!mounted || !_videoController.value.isInitialized) return;
 
@@ -86,7 +86,7 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
     if (!mounted || _hasNavigated) return;
     _hasNavigated = true;
 
-    // ✅ Pehle black fade out, phir navigate
+    //  Pehle black fade out, phir navigate
     await _fadeOutController.forward();
 
     if (!mounted) return;
@@ -215,14 +215,14 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
                     ),
                   ),
 
-                  // ✅ Koi CircularProgressIndicator NAHI
+                  //  Koi CircularProgressIndicator NAHI
                   const SizedBox(height: 80),
                 ],
               ),
             ),
           ),
 
-          // ── 4. ✅ Black Fade Out — Buffer Fix ───────────
+          // ── 4. Black Fade Out — Buffer Fix ───────────
           AnimatedBuilder(
             animation: _fadeOutController,
             builder: (context, child) {
