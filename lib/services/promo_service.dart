@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class PromoService {
-  // ✅ 8092 — Promo Service ka port
+  
   static const String _baseUrl = 'http://192.168.0.124:8092/api/coupons';
 
   static Future<Map<String, dynamic>> validateCoupon({
@@ -12,9 +12,9 @@ class PromoService {
     required int restaurantId,
   }) async {
     try {
-      print('🎟️ Validating coupon: $couponCode');
-      print('🎟️ URL: $_baseUrl/validate');
-      print('🎟️ Amount: $orderAmount, UserId: $userId');
+      print(' Validating coupon: $couponCode');
+      print(' URL: $_baseUrl/validate');
+      print(' Amount: $orderAmount, UserId: $userId');
 
       final response = await http.post(
         Uri.parse('$_baseUrl/validate'),
@@ -27,12 +27,12 @@ class PromoService {
         }),
       );
 
-      print('🎟️ Promo Response: ${response.statusCode}');
-      print('🎟️ Promo Body: ${response.body}');
+      print(' Promo Response: ${response.statusCode}');
+      print(' Promo Body: ${response.body}');
 
       return jsonDecode(response.body);
     } catch (e) {
-      print('❌ Promo Error: $e');
+      print(' Promo Error: $e');
       return {'valid': false, 'message': 'Network error: $e'};
     }
   }

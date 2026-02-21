@@ -109,7 +109,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     setState(() => _isProcessing = true);
 
     try {
-      // Prefer CartProvider ke getter (subtotal / total / tax / deliveryFee) use karna
+      
       final subtotal = cartProvider.subtotal;
       final deliveryFee = cartProvider.deliveryFee;
       final tax = cartProvider.tax;
@@ -226,7 +226,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         }
       } else if (msg.toLowerCase().contains('took longer than') ||
           msg.toLowerCase().contains('receive timeout')) {
-        // Dio timeout message ko user-friendly bana do
+       
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Text(
@@ -273,7 +273,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             final tax = cartProvider.tax;
             final grandTotal = cartProvider.total;
 
-            // Yahan Column + Expanded + SingleChildScrollView se overflow solve
+           
             return Column(
               children: [
                 Expanded(

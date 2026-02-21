@@ -18,7 +18,6 @@ class AuthService {
       },
     ));
     
-    // Add logging in debug mode
     if (ApiConfig.isDebugMode) {
       _dio.interceptors.add(LogInterceptor(
         requestBody: true,
@@ -27,7 +26,7 @@ class AuthService {
         logPrint: (obj) => print('🌐 $obj'),
       ));
       
-      print('🔐 AuthService initialized');
+      print('   AuthService initialized');
       print('   Base URL: ${ApiConfig.baseUrl}');
       print('   Environment: ${ApiConfig.environment}');
       print('   Timeout: ${ApiConfig.connectTimeout.inSeconds}s');
@@ -36,7 +35,7 @@ class AuthService {
 
   Future<Map<String, dynamic>> login(String emailOrPhone, String password) async {
     try {
-      print('🔑 Login attempt: $emailOrPhone');
+      print(' Login attempt: $emailOrPhone');
 
       final response = await _dio.post(
         '/api/auth/login',
@@ -46,9 +45,9 @@ class AuthService {
         },
       );
 
-      print('✅ Login successful');
+      print('Login successful');
       
-      // DEBUG: Print full response
+    
       if (ApiConfig.isDebugMode) {
         print('========================================');
         print('LOGIN RESPONSE DEBUG');
@@ -135,7 +134,7 @@ class AuthService {
         throw Exception('Invalid login response format');
       }
     } on DioException catch (e) {
-      print('❌ Login DioError: ${e.type}');
+      print(' Login DioError: ${e.type}');
       print('   Message: ${e.message}');
       
       if (e.response != null) {
@@ -162,7 +161,7 @@ class AuthService {
         throw Exception('Network error: ${e.message}');
       }
     } catch (e) {
-      print('❌ Unexpected error: $e');
+      print(' Unexpected error: $e');
       rethrow;
     }
   }
@@ -174,7 +173,7 @@ class AuthService {
     String password,
   ) async {
     try {
-      print('📝 Register attempt: $email');
+      print(' Register attempt: $email');
 
       final response = await _dio.post(
         '/api/auth/register',
@@ -187,7 +186,7 @@ class AuthService {
         },
       );
 
-      print('✅ Registration successful');
+      print(' Registration successful');
 
       if (response.data != null && response.data['accessToken'] != null) {
         final token = response.data['accessToken'];
@@ -220,7 +219,7 @@ class AuthService {
         throw Exception('Invalid registration response format');
       }
     } on DioException catch (e) {
-      print('❌ Registration error: ${e.message}');
+      print(' Registration error: ${e.message}');
       
       if (e.response != null) {
         throw Exception(e.response?.data['message'] ?? 'Registration failed');
@@ -230,7 +229,7 @@ class AuthService {
         throw Exception('Network error. Check your connection.');
       }
     } catch (e) {
-      print('❌ Unexpected registration error: $e');
+      print(' Unexpected registration error: $e');
       rethrow;
     }
   }
@@ -244,7 +243,7 @@ class AuthService {
   final token = prefs.getString('auth_token');
   final userId = prefs.getInt('user_id');
   
-  print('🔍 Auth Check:');
+  print(' Auth Check:');
   print('   Token exists: ${token != null}');
   print('   User ID: $userId');
   
@@ -254,6 +253,6 @@ class AuthService {
 
   Future<void> logout() async {
     await TokenManager.clearAuthData();
-    print('👋 Logged out successfully');
+    print(' Logged out successfully');
   }
 }

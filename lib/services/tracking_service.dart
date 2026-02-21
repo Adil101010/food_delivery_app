@@ -13,19 +13,19 @@ class TrackingService {
     try {
       final token = await TokenManager.getToken();
       final response = await http.get(
-        Uri.parse('$baseUrl/api/deliveries/order/$orderId'), // ✅ /api/ prefix
+        Uri.parse('$baseUrl/api/deliveries/order/$orderId'), 
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },
       );
 
-      print('📍 Tracking response: ${response.statusCode}');
-      print('📍 Tracking body: ${response.body}');
+      print(' Tracking response: ${response.statusCode}');
+      print(' Tracking body: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        // ✅ Handle wrapped response {data: {...}} or direct {...}
+        // Handle wrapped response 
         final trackingData = data['data'] ?? data;
         return DeliveryTracking.fromJson(trackingData);
       } else if (response.statusCode == 404) {
@@ -76,7 +76,7 @@ class TrackingService {
           onLocationUpdate(location);
         } catch (e) {
           print('Error updating location: $e');
-          // ✅ Timer cancel mat karo — retry karta rahega
+          
         }
       },
     );
@@ -87,7 +87,7 @@ class TrackingService {
     _locationUpdateTimer = null;
   }
 
-  // ✅ dispose method add kiya
+  
   void dispose() {
     stopLiveTracking();
   }
@@ -117,17 +117,17 @@ class TrackingService {
       if (response.statusCode == 200) {
         return json.decode(response.body);
       } else {
-        // ✅ Fallback — straight line distance calculate karo
+        
         return _calculateStraightLineETA(fromLat, fromLng, toLat, toLng);
       }
     } catch (e) {
       print('Error calculating ETA: $e');
-      // ✅ API fail ho to fallback
+      
       return _calculateStraightLineETA(fromLat, fromLng, toLat, toLng);
     }
   }
 
-  // ✅ Fallback ETA — Haversine formula
+  
   Map<String, dynamic> _calculateStraightLineETA(
     double fromLat, double fromLng,
     double toLat, double toLng,

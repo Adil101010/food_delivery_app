@@ -22,7 +22,7 @@ class TokenManager {
     await prefs.setString(_userEmailKey, userEmail);
     await prefs.setString(_userPhoneKey, userPhone);
     
-    print('✅ Auth data saved successfully');
+    print('   Auth data saved successfully');
     print('   UserId: $userId');
     print('   User: $userName');
     print('   Email: $userEmail');
@@ -35,7 +35,7 @@ class TokenManager {
     return prefs.getString(_tokenKey);
   }
 
-  // Get token (alias for compatibility)
+  // Get token 
   static Future<String?> getToken() async {
     return await getStoredToken();
   }
@@ -64,7 +64,7 @@ class TokenManager {
     return prefs.getString(_userPhoneKey);
   }
 
-  // Get user data - FIXED to include userId
+  // Get user data 
   static Future<Map<String, dynamic>> getUserData() async {
     final prefs = await SharedPreferences.getInstance();
     
@@ -73,7 +73,7 @@ class TokenManager {
     final userEmail = prefs.getString(_userEmailKey) ?? '';
     final userPhone = prefs.getString(_userPhoneKey) ?? '';
     
-    print('📖 Retrieved user data:');
+    print('   Retrieved user data:');
     print('   UserId: $userId');
     print('   UserName: $userName');
     print('   UserEmail: $userEmail');
@@ -96,12 +96,12 @@ class TokenManager {
     
     if (userName != null) {
       await prefs.setString(_userNameKey, userName);
-      print('✅ Updated userName in storage: $userName');
+      print(' Updated userName in storage: $userName');
     }
     
     if (userPhone != null) {
       await prefs.setString(_userPhoneKey, userPhone);
-      print('✅ Updated userPhone in storage: $userPhone');
+      print(' Updated userPhone in storage: $userPhone');
     }
   }
 
@@ -109,7 +109,7 @@ class TokenManager {
   static Future<bool> isLoggedIn() async {
     final token = await getStoredToken();
     final isLoggedIn = token != null && token.isNotEmpty;
-    print('🔐 Login status: $isLoggedIn');
+    print(' Login status: $isLoggedIn');
     return isLoggedIn;
   }
 
@@ -126,6 +126,6 @@ class TokenManager {
     await prefs.remove(_userNameKey);
     await prefs.remove(_userEmailKey);
     await prefs.remove(_userPhoneKey);
-    print('🗑️ Auth data cleared');
+    print(' Auth data cleared');
   }
 }

@@ -97,9 +97,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
     );
   }
 
-  // ================================================================
-  //  BUILD
-  // ================================================================
+ 
   @override
   Widget build(BuildContext context) {
     final filtered = _filteredOrders;
@@ -150,9 +148,9 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
     );
   }
 
-  // ================================================================
+ 
   //  HEADER + FILTERS
-  // ================================================================
+  
   Widget _buildHeaderAndFilters(int count) {
     return Container(
       color: Colors.white,
@@ -184,7 +182,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
               children: _filters.map((f) {
                 final isSelected = _selectedFilter == f;
 
-                // Badge count
+               
                 int badgeCount = 0;
                 if (f == 'Ongoing') {
                   badgeCount = _orders.where((o) {
@@ -232,7 +230,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                                   : AppTheme.textSecondary,
                             ),
                           ),
-                          // ✅ Ongoing badge
+                         
                           if (f == 'Ongoing' && badgeCount > 0) ...[
                             const SizedBox(width: 6),
                             Container(
@@ -269,9 +267,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
     );
   }
 
-  // ================================================================
-  //  STATES
-  // ================================================================
+ 
   Widget _buildErrorState() {
     return Center(
       child: Padding(
@@ -381,9 +377,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
   }
 }
 
-// ================================================================
-//  ORDER CARD
-// ================================================================
+
 class _OrderCard extends StatelessWidget {
   final Order order;
   final VoidCallback onTap;
@@ -413,7 +407,7 @@ class _OrderCard extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(
-          // ✅ Active orders — orange border
+        
           color: _isTrackable
               ? AppTheme.primary.withOpacity(0.4)
               : AppTheme.border,
@@ -428,7 +422,7 @@ class _OrderCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ✅ Active indicator strip
+         
               if (_isTrackable)
                 Container(
                   margin: const EdgeInsets.only(bottom: 12),
@@ -581,7 +575,7 @@ class _OrderCard extends StatelessWidget {
                     ),
                   ),
 
-                  // ✅ Track button — only for active orders
+                  //  Track button — only for active orders
                   if (_isTrackable) ...[
                     ElevatedButton.icon(
                       onPressed: onTrack,

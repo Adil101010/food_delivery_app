@@ -1,5 +1,3 @@
-// lib/services/review_service.dart
-
 import 'package:dio/dio.dart';
 import '../config/api_config.dart';
 import '../models/review_model.dart';
@@ -13,7 +11,7 @@ class ReviewService {
   ));
 
   ReviewService() {
-    print('⭐ ReviewService initialized');
+    print(' ReviewService initialized');
     
     _dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) async {
@@ -21,40 +19,40 @@ class ReviewService {
         if (token != null) {
           options.headers['Authorization'] = 'Bearer $token';
         }
-        print('⭐ REVIEW REQUEST[${options.method}] => ${options.path}');
+        print(' REVIEW REQUEST[${options.method}] => ${options.path}');
         return handler.next(options);
       },
       onResponse: (response, handler) {
-        print('✅ REVIEW RESPONSE[${response.statusCode}] => ${response.requestOptions.path}');
+        print(' REVIEW RESPONSE[${response.statusCode}] => ${response.requestOptions.path}');
         return handler.next(response);
       },
       onError: (error, handler) {
-        print('❌ REVIEW ERROR[${error.response?.statusCode}] => ${error.requestOptions.path}');
+        print(' REVIEW ERROR[${error.response?.statusCode}] => ${error.requestOptions.path}');
         print('   Error: ${error.response?.data}');
         return handler.next(error);
       },
     ));
   }
 
-  /// Create review - ✅ UPDATED WITH orderId and type
+  /// Create review 
   Future<ReviewModel?> createReview({
     required int restaurantId,
-    required int orderId,        // ✅ REQUIRED
-    required String type,         // ✅ REQUIRED (RESTAURANT, MENU_ITEM, DELIVERY)
+    required int orderId,        
+    required String type,         
     required double rating,
     String? comment,
     int? menuItemId,
   }) async {
     try {
-      print('⭐ Creating review for restaurant: $restaurantId');
+      print('   Creating review for restaurant: $restaurantId');
       print('   Order ID: $orderId');
       print('   Type: $type');
       print('   Rating: $rating');
 
       final Map<String, dynamic> data = {
         'restaurantId': restaurantId,
-        'orderId': orderId,      // ✅ ADDED
-        'type': type,            // ✅ ADDED
+        'orderId': orderId,      
+        'type': type,            
         'rating': rating,
       };
 
@@ -66,7 +64,7 @@ class ReviewService {
         data['menuItemId'] = menuItemId;
       }
 
-      print('⭐ Review payload: $data');
+      print(' Review payload: $data');
 
       final response = await _dio.post(
         '/api/reviews',
@@ -74,13 +72,13 @@ class ReviewService {
       );
 
       if (response.statusCode == 201 && response.data != null) {
-        print('✅ Review created successfully');
+        print(' Review created successfully');
         return ReviewModel.fromJson(response.data);
       }
 
       return null;
     } on DioException catch (e) {
-      print('❌ Failed to create review: ${e.message}');
+      print(' Failed to create review: ${e.message}');
       if (e.response != null) {
         print('   Response data: ${e.response?.data}');
       }
@@ -91,7 +89,7 @@ class ReviewService {
   /// Get restaurant reviews
   Future<List<ReviewModel>> getRestaurantReviews(int restaurantId) async {
     try {
-      print('⭐ Fetching reviews for restaurant: $restaurantId');
+      print(' Fetching reviews for restaurant: $restaurantId');
 
       final response = await _dio.get('/api/reviews/restaurant/$restaurantId');
 
@@ -99,13 +97,13 @@ class ReviewService {
         final List<dynamic> data = response.data as List<dynamic>;
         final reviews = data.map((json) => ReviewModel.fromJson(json)).toList();
         
-        print('✅ Fetched ${reviews.length} reviews');
+        print(' Fetched ${reviews.length} reviews');
         return reviews;
       }
 
       return [];
     } on DioException catch (e) {
-      print('❌ Failed to fetch restaurant reviews: ${e.message}');
+      print(' Failed to fetch restaurant reviews: ${e.message}');
       return [];
     }
   }
@@ -118,7 +116,7 @@ class ReviewService {
         throw Exception('User not logged in');
       }
 
-      print('⭐ Fetching reviews for user: $userId');
+      print(' Fetching reviews for user: $userId');
 
       final response = await _dio.get('/api/reviews/user/$userId');
 
@@ -129,7 +127,7 @@ class ReviewService {
 
       return [];
     } on DioException catch (e) {
-      print('❌ Failed to fetch user reviews: ${e.message}');
+      print(' Failed to fetch user reviews: ${e.message}');
       return [];
     }
   }
@@ -137,7 +135,7 @@ class ReviewService {
   /// Get review by order ID
   Future<ReviewModel?> getReviewByOrderId(int orderId) async {
     try {
-      print('⭐ Fetching review for order: $orderId');
+      print(' Fetching review for order: $orderId');
 
       final response = await _dio.get('/api/reviews/order/$orderId');
 
@@ -147,7 +145,7 @@ class ReviewService {
 
       return null;
     } on DioException catch (e) {
-      print('❌ Failed to fetch order review: ${e.message}');
+      print(' Failed to fetch order review: ${e.message}');
       if (e.response?.statusCode == 404) {
         return null;
       }
@@ -158,7 +156,7 @@ class ReviewService {
   /// Get menu item reviews
   Future<List<ReviewModel>> getMenuItemReviews(int menuItemId) async {
     try {
-      print('⭐ Fetching reviews for menu item: $menuItemId');
+      print(' Fetching reviews for menu item: $menuItemId');
 
       final response = await _dio.get('/api/reviews/menu-item/$menuItemId');
 
@@ -169,7 +167,7 @@ class ReviewService {
 
       return [];
     } on DioException catch (e) {
-      print('❌ Failed to fetch menu item reviews: ${e.message}');
+      print(' Failed to fetch menu item reviews: ${e.message}');
       return [];
     }
   }
@@ -177,7 +175,7 @@ class ReviewService {
   /// Get restaurant stats
   Future<RatingStatsModel?> getRestaurantStats(int restaurantId) async {
     try {
-      print('⭐ Fetching stats for restaurant: $restaurantId');
+      print(' Fetching stats for restaurant: $restaurantId');
 
       final response = await _dio.get(
         '/api/reviews/restaurant/$restaurantId/stats',
@@ -189,7 +187,7 @@ class ReviewService {
 
       return null;
     } on DioException catch (e) {
-      print('❌ Failed to fetch restaurant stats: ${e.message}');
+      print(' Failed to fetch restaurant stats: ${e.message}');
       return null;
     }
   }
@@ -197,18 +195,18 @@ class ReviewService {
   /// Mark review as helpful
   Future<ReviewModel?> markHelpful(int reviewId) async {
     try {
-      print('⭐ Marking review as helpful: $reviewId');
+      print(' Marking review as helpful: $reviewId');
 
       final response = await _dio.post('/api/reviews/$reviewId/helpful');
 
       if (response.statusCode == 200 && response.data != null) {
-        print('✅ Review marked as helpful');
+        print(' Review marked as helpful');
         return ReviewModel.fromJson(response.data);
       }
 
       return null;
     } on DioException catch (e) {
-      print('❌ Failed to mark review as helpful: ${e.message}');
+      print(' Failed to mark review as helpful: ${e.message}');
       return null;
     }
   }
@@ -216,18 +214,18 @@ class ReviewService {
   /// Report review
   Future<ReviewModel?> reportReview(int reviewId) async {
     try {
-      print('⭐ Reporting review: $reviewId');
+      print(' Reporting review: $reviewId');
 
       final response = await _dio.post('/api/reviews/$reviewId/report');
 
       if (response.statusCode == 200 && response.data != null) {
-        print('✅ Review reported');
+        print(' Review reported');
         return ReviewModel.fromJson(response.data);
       }
 
       return null;
     } on DioException catch (e) {
-      print('❌ Failed to report review: ${e.message}');
+      print(' Failed to report review: ${e.message}');
       return null;
     }
   }
@@ -235,7 +233,7 @@ class ReviewService {
   /// Add restaurant reply
   Future<ReviewModel?> addRestaurantReply(int reviewId, String reply) async {
     try {
-      print('⭐ Adding restaurant reply to review: $reviewId');
+      print(' Adding restaurant reply to review: $reviewId');
 
       final response = await _dio.post(
         '/api/reviews/$reviewId/reply',
@@ -243,13 +241,13 @@ class ReviewService {
       );
 
       if (response.statusCode == 200 && response.data != null) {
-        print('✅ Restaurant reply added');
+        print(' Restaurant reply added');
         return ReviewModel.fromJson(response.data);
       }
 
       return null;
     } on DioException catch (e) {
-      print('❌ Failed to add restaurant reply: ${e.message}');
+      print(' Failed to add restaurant reply: ${e.message}');
       return null;
     }
   }

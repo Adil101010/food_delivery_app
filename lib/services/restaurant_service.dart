@@ -16,7 +16,7 @@ class RestaurantService {
           
           if (token != null) {
             options.headers['Authorization'] = 'Bearer $token';
-            print('🔑 Token added to request');
+            print(' Token added to request');
           }
           
           return handler.next(options);

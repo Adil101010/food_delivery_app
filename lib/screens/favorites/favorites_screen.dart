@@ -1,5 +1,3 @@
-// lib/screens/favorites/favorites_screen.dart
-
 import 'package:flutter/material.dart';
 import '../../config/app_theme.dart';
 import '../../models/restaurant_model.dart';
@@ -32,7 +30,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // Get favorite restaurant IDs
+    
       final favoriteIds = await _favoriteService.getUserFavoriteRestaurantIds();
       
       if (favoriteIds.isEmpty) {
@@ -44,13 +42,13 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
         return;
       }
 
-      // Get all restaurants
+     
       final allRestaurants = await _apiService.getAllRestaurants();
       final restaurants = allRestaurants
           .map((json) => Restaurant.fromJson(json))
           .toList();
 
-      // Filter favorites
+    
       final favorites = restaurants
           .where((restaurant) => favoriteIds.contains(restaurant.id))
           .toList();
@@ -233,7 +231,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
             ),
           );
           
-          // Refresh if needed
+         
           if (result == true) {
             _loadFavorites();
           }

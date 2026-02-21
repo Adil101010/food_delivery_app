@@ -1,5 +1,3 @@
-// lib/screens/profile/profile_screen.dart
-
 import 'package:flutter/material.dart';
 import '../../config/app_theme.dart';
 import '../../services/token_manager.dart';
@@ -363,7 +361,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         children: [
           _buildSectionHeader('SETTINGS'),
 
-          // ✅ Change Password — working
+          //  Change Password 
           _buildMenuItem(
             icon: Icons.lock_outline,
             iconColor: Colors.purple,
@@ -377,7 +375,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           Divider(color: AppTheme.border, height: 1, indent: 72),
 
-          // ✅ Notifications — working
+          //  Notifications 
           _buildMenuItem(
             icon: Icons.notifications_none,
             iconColor: Colors.amber,
@@ -401,7 +399,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           Divider(color: AppTheme.border, height: 1, indent: 72),
 
-          // ✅ About — working
+          // About 
           _buildMenuItem(
             icon: Icons.info_outline,
             iconColor: Colors.blueGrey,

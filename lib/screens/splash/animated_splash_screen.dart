@@ -1,5 +1,3 @@
-// lib/screens/splash/animated_splash_screen.dart
-
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 import '../../config/app_theme.dart';
@@ -16,10 +14,10 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
     with TickerProviderStateMixin {
   late VideoPlayerController _videoController;
   late AnimationController _fadeController;
-  late AnimationController _fadeOutController; //  buffer fix
+  late AnimationController _fadeOutController; 
 
   bool _isVideoInitialized = false;
-  bool _hasNavigated = false; //  double navigate prevent
+  bool _hasNavigated = false; 
 
   @override
   void initState() {
@@ -30,7 +28,7 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
       vsync: this,
     );
 
-    //  Video end pe black fade out
+    
     _fadeOutController = AnimationController(
       duration: const Duration(milliseconds: 600),
       vsync: this,
@@ -51,24 +49,24 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
 
       setState(() => _isVideoInitialized = true);
 
-      // Slow motion 75%
+      
       await _videoController.setPlaybackSpeed(0.75);
 
       _videoController.play();
       _fadeController.forward();
 
-      //  Video progress listener
+      
       _videoController.addListener(_onVideoProgress);
 
-      // Safety fallback
-      Future.delayed(const Duration(seconds: 8), () => _navigateNext());
+      
+      Future.delayed(const Duration(seconds: 5), () => _navigateNext());
     } catch (e) {
       print('Video initialization error: $e');
       Future.delayed(const Duration(seconds: 3), () => _navigateNext());
     }
   }
 
-  //  Video end se 600ms pehle fade out start 
+  
   void _onVideoProgress() {
     if (!mounted || !_videoController.value.isInitialized) return;
 
@@ -86,7 +84,7 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
     if (!mounted || _hasNavigated) return;
     _hasNavigated = true;
 
-    //  Pehle black fade out, phir navigate
+   
     await _fadeOutController.forward();
 
     if (!mounted) return;
@@ -119,7 +117,7 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
         fit: StackFit.expand,
         children: [
 
-          // ── 1. Video Background ─────────────────────────
+         
           if (_isVideoInitialized)
             FittedBox(
               fit: BoxFit.cover,
@@ -130,10 +128,10 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
               ),
             )
           else
-            // Video load hone tak — plain black (koi spinner nahi)
+           
             Container(color: Colors.black),
 
-          // ── 2. Dark Overlay ─────────────────────────────
+          
           Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -147,7 +145,7 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
             ),
           ),
 
-          // ── 3. Branding — Logo + Text ───────────────────
+          
           FadeTransition(
             opacity: _fadeController,
             child: SafeArea(

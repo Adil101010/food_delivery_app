@@ -17,7 +17,7 @@ class ApiService {
       },
     ));
 
-    // Add request/response interceptors
+    
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
@@ -56,7 +56,7 @@ class ApiService {
             }
           }
 
-          // Handle 401 Unauthorized
+          
           if (error.response?.statusCode == 401) {
             print('Unauthorized access - Clearing auth data');
             await TokenManager.clearAuthData();
@@ -77,7 +77,7 @@ class ApiService {
     }
   }
 
-  // Extract user-friendly error messages
+ 
   String _extractErrorMessage(dynamic error, String defaultMessage) {
     if (error is DioException) {
       if (ApiConfig.isDebugMode) {
@@ -115,7 +115,7 @@ class ApiService {
     return defaultMessage;
   }
 
-  // Handle HTTP status code errors
+  
   String _handleStatusCodeError(int? statusCode) {
     if (statusCode == null) return 'Unknown error occurred';
 
@@ -327,7 +327,7 @@ class ApiService {
     }
   }
 
-  // ✅ Change Password
+  
   Future<void> changePassword({
     required String currentPassword,
     required String newPassword,

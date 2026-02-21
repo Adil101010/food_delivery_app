@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 class AppTheme {
-  // Professional Colors (Swiggy/Zomato Style)
-  static const Color primary = Color(0xFFFC8019); // Swiggy Orange
+  
+  static const Color primary = Color(0xFFFC8019); 
   static const Color primaryDark = Color(0xFFE67316);
-  static const Color secondary = Color(0xFF60B246); // Success Green
-  static const Color background = Color(0xFFFFFFFF); // White
-  static const Color surface = Color(0xFFF9F9F9); // Light Gray
+  static const Color secondary = Color(0xFF60B246); 
+  static const Color background = Color(0xFFFFFFFF); 
+  static const Color surface = Color(0xFFF9F9F9); 
   static const Color cardBg = Color(0xFFFFFFFF);
   static const Color textPrimary = Color(0xFF282C3F);
   static const Color textSecondary = Color(0xFF7E808C);
@@ -18,7 +18,7 @@ class AppTheme {
   static const Color rating = Color(0xFF48C479);
   static const Color discount = Color(0xFFDB7A23);
 
-  // MaterialColor Swatch for primary color
+ 
   static const MaterialColor primarySwatch = MaterialColor(
     0xFFFC8019,
     <int, Color>{
@@ -27,8 +27,8 @@ class AppTheme {
       200: Color(0xFFFFCC9C),
       300: Color(0xFFFFB874),
       400: Color(0xFFFFA856),
-      500: Color(0xFFFC8019), // primary
-      600: Color(0xFFE67316), // primaryDark
+      500: Color(0xFFFC8019), 
+      600: Color(0xFFE67316), 
       700: Color(0xFFD06613),
       800: Color(0xFFBA5910),
       900: Color(0xFFA04C0D),

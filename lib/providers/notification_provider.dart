@@ -1,5 +1,3 @@
-// lib/providers/notification_provider.dart
-
 import 'package:flutter/material.dart';
 import '../models/notification_model.dart';
 import '../services/notification_service.dart';
@@ -11,7 +9,7 @@ class NotificationProvider with ChangeNotifier {
   bool _isLoading = false;
   String? _error;
 
-  // Getters
+ 
   List<NotificationModel> get notifications => _notifications;
   bool get isLoading => _isLoading;
   String? get error => _error;
@@ -36,7 +34,7 @@ class NotificationProvider with ChangeNotifier {
       
       _notifications = await _notificationService.getUserNotifications();
       
-      // Sort by date (newest first)
+      // Sort by date 
       _notifications.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       
       print('NotificationProvider: Loaded ${_notifications.length} notifications');

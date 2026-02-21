@@ -129,7 +129,7 @@ class _FoodCarouselSplashState extends State<FoodCarouselSplash>
           SafeArea(
             child: Column(
               children: [
-                // Logo / App Name (top)
+                // Logo / App Name 
                 const Padding(
                   padding: EdgeInsets.only(top: 60),
                   child: Column(

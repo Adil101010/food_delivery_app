@@ -1,5 +1,3 @@
-// lib/providers/cart_provider.dart
-
 import 'package:flutter/material.dart';
 import '../models/cart_item_model.dart';
 import '../services/cart_service.dart';
@@ -71,7 +69,7 @@ class CartProvider with ChangeNotifier {
     try {
       print('CartProvider: Loading cart...');
       
-      // Get cart data from service (includes cart-level info)
+      // Get cart data from service 
       final cartData = await _cartService.getCart();
       
       if (cartData != null && cartData['items'] != null) {
@@ -263,7 +261,7 @@ class CartProvider with ChangeNotifier {
 
   Future<bool> applyCoupon(String couponCode) async {
     print('CartProvider: Applying coupon $couponCode');
-    // TODO: Implement coupon logic with backend
+    
     notifyListeners();
     return false;
   }

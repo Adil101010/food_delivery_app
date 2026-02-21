@@ -85,7 +85,7 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen> {
             slivers: [
               _buildAppBar(),
               _buildRestaurantInfo(),
-              _buildReviewsSection(),  // ✅ NEW - Reviews section
+              _buildReviewsSection(),  
               _buildOffersSection(),
               _buildDivider(),
               _buildCategoryFilter(),
@@ -349,7 +349,7 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen> {
     );
   }
 
-  // ✅ NEW - Reviews Section
+  
   Widget _buildReviewsSection() {
     return SliverToBoxAdapter(
       child: Container(

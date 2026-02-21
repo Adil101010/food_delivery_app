@@ -579,7 +579,7 @@ class _OrderConfirmationScreenState extends State<OrderConfirmationScreen>
     },
     child: Column(
       children: [
-        // ✅ PRIMARY — Track My Order (full width)
+       
         SizedBox(
           width: double.infinity,
           child: Container(
@@ -626,7 +626,7 @@ class _OrderConfirmationScreenState extends State<OrderConfirmationScreen>
 
         const SizedBox(height: 12),
 
-        // ✅ SECONDARY — Go Home + View Orders
+        
         Row(
           children: [
             Expanded(
@@ -753,7 +753,7 @@ class _OrderConfirmationScreenState extends State<OrderConfirmationScreen>
   }
 }
 
-// Confetti Painter for celebration effect
+
 class _ConfettiPainter extends CustomPainter {
   final double animationValue;
 

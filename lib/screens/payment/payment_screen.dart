@@ -42,7 +42,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
     _razorpayOrderId = widget.razorpayOrderId;
     _razorpayKeyId = widget.razorpayKeyId;
 
-    print('💳 PaymentScreen initialized with:');
+    print('   PaymentScreen initialized with:');
     print('   OrderId: ${widget.orderId}');
     print('   Amount: ${widget.totalAmount}');
     print('   RazorpayOrderId: $_razorpayOrderId');
@@ -55,9 +55,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
     super.dispose();
   }
 
-  // ================================================================
+  
   //  PROCESS PAYMENT — router
-  // ================================================================
+  
   Future<void> _processPayment() async {
     if (_selectedPaymentMethod == 'CASH_ON_DELIVERY') {
       await _processCODPayment();
@@ -66,9 +66,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
     }
   }
 
-  // ================================================================
   //  ONLINE PAYMENT
-  // ================================================================
+  
   Future<void> _processOnlinePayment() async {
     setState(() => _isProcessing = true);
 
@@ -78,14 +77,14 @@ class _PaymentScreenState extends State<PaymentScreen> {
       final userPhone = await TokenManager.getUserPhone() ?? '';
 
       if (_razorpayOrderId != null && _razorpayKeyId != null) {
-        print('✅ Using existing Razorpay order: $_razorpayOrderId');
+        print(' Using existing Razorpay order: $_razorpayOrderId');
         setState(() => _isProcessing = false);
         _openRazorpayCheckout(userName, userEmail, userPhone);
         return;
       }
 
       // Fallback — create new Razorpay order
-      print('⚠️ Creating new Razorpay order (fallback)');
+      print(' Creating new Razorpay order (fallback)');
       final userId = await TokenManager.getUserId();
       if (userId == null) throw Exception('User not logged in');
 
@@ -113,7 +112,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
           .timeout(const Duration(seconds: 30));
 
       print(
-          '📥 Create order response: ${response.statusCode} - ${response.body}');
+          ' Create order response: ${response.statusCode} - ${response.body}');
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = json.decode(response.body);
@@ -128,7 +127,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
       }
     } catch (e) {
       setState(() => _isProcessing = false);
-      print('❌ Error in payment: $e');
+      print(' Error in payment: $e');
       _showErrorDialog('Failed to process payment. Please try again.');
     }
   }
@@ -150,21 +149,20 @@ class _PaymentScreenState extends State<PaymentScreen> {
       'theme': {'color': '#FF6B35'},
     };
 
-    print('🎯 Opening Razorpay checkout: $options');
+    print(' Opening Razorpay checkout: $options');
 
     try {
       _razorpay.open(options);
     } catch (e) {
-      print('❌ Error opening Razorpay: $e');
+      print(' Error opening Razorpay: $e');
       _showErrorDialog('Failed to open payment gateway');
     }
   }
 
-  // ================================================================
   //  RAZORPAY CALLBACKS
-  // ================================================================
+  
   void _handlePaymentSuccess(PaymentSuccessResponse response) async {
-    print('✅ Payment Success!');
+    print('   Payment Success!');
     print('   Payment ID: ${response.paymentId}');
     print('   Order ID: ${response.orderId}');
     print('   Signature: ${response.signature}');
@@ -178,7 +176,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
         'razorpaySignature': response.signature ?? '',
       };
 
-      print('🔍 Verifying payment: $verifyData');
+      print(' Verifying payment: $verifyData');
 
       final verifyResponse = await http
           .post(
@@ -193,7 +191,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
           .timeout(const Duration(seconds: 30));
 
       print(
-          '📥 Verify response: ${verifyResponse.statusCode} - ${verifyResponse.body}');
+          ' Verify response: ${verifyResponse.statusCode} - ${verifyResponse.body}');
 
       setState(() => _isProcessing = false);
 
@@ -209,30 +207,30 @@ class _PaymentScreenState extends State<PaymentScreen> {
       }
     } catch (e) {
       setState(() => _isProcessing = false);
-      print('❌ Payment verification error: $e');
+      print(' Payment verification error: $e');
       _showErrorDialog('Payment verification error: $e');
     }
   }
 
   void _handlePaymentError(PaymentFailureResponse response) {
-    print('❌ Payment Error: ${response.code} - ${response.message}');
+    print(' Payment Error: ${response.code} - ${response.message}');
     _showErrorDialog('Payment failed: ${response.message}');
   }
 
   void _handleExternalWallet(ExternalWalletResponse response) {
-    print('🔗 External Wallet: ${response.walletName}');
+    print(' External Wallet: ${response.walletName}');
   }
 
-  // ================================================================
-  //  COD PAYMENT ✅ FULLY WORKING
-  // ================================================================
+  
+  //  COD PAYMENT  
+  
 Future<void> _processCODPayment() async {
     setState(() => _isProcessing = true);
 
     try {
       print('Processing COD for order: ${widget.orderId}');
 
-      // ✅ ye do lines add karo
+    
       final userId = await TokenManager.getUserId();
       if (userId == null) throw Exception('User not logged in');
 
@@ -254,21 +252,21 @@ Future<void> _processCODPayment() async {
       if (response.statusCode == 200 || response.statusCode == 201) {
         _showSuccessDialog();
       } else {
-        // ✅ Agar COD endpoint nahi hai backend pe — gracefully handle
+       
         final body = json.decode(response.body);
         _showErrorDialog(
             body['message'] ?? 'Failed to process COD. Try again.');
       }
     } catch (e) {
       setState(() => _isProcessing = false);
-      print('❌ COD payment error: $e');
+      print(' COD payment error: $e');
       _showErrorDialog('Failed to process COD payment: $e');
     }
   }
 
-  // ================================================================
+  
   //  SUCCESS DIALOG — Track Order
-  // ================================================================
+ 
   void _showSuccessDialog() {
     showDialog(
       context: context,
@@ -279,7 +277,7 @@ Future<void> _processCODPayment() async {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // ✅ Animated check icon
+            //  Animated check icon
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -291,7 +289,7 @@ Future<void> _processCODPayment() async {
             ),
             const SizedBox(height: 20),
             const Text(
-              'Order Placed! 🎉',
+              'Order Placed!  ',
               style: TextStyle(
                   fontSize: 22, fontWeight: FontWeight.bold),
             ),
@@ -322,7 +320,7 @@ Future<void> _processCODPayment() async {
             ),
             const SizedBox(height: 24),
 
-            // ✅ Primary — Track Order
+            //  Primary — Track Order
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
@@ -356,7 +354,7 @@ Future<void> _processCODPayment() async {
             ),
             const SizedBox(height: 10),
 
-            // ✅ Secondary — View All Orders
+            //  Secondary — View All Orders
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
@@ -392,9 +390,9 @@ Future<void> _processCODPayment() async {
     );
   }
 
-  // ================================================================
+ 
   //  ERROR DIALOG
-  // ================================================================
+ 
   void _showErrorDialog(String message) {
     showDialog(
       context: context,
@@ -467,9 +465,7 @@ Future<void> _processCODPayment() async {
     );
   }
 
-  // ================================================================
-  //  BUILD
-  // ================================================================
+ 
   @override
   Widget build(BuildContext context) {
     return Scaffold(

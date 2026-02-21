@@ -1,4 +1,3 @@
-// lib/models/payment_verification_request.dart
 
 class PaymentVerificationRequest {
   final String razorpayOrderId;

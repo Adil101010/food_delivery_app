@@ -28,14 +28,14 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
   String _eta = 'Calculating...';
   double _distance = 0.0;
 
-  // ✅ Status polling timer (refreshes every 30s)
+  //  Status polling timer refreshes every 30s
   Timer? _statusPollTimer;
 
   @override
   void initState() {
     super.initState();
     _loadTrackingData();
-    // ✅ Poll order status every 30 seconds
+    //  Poll order status every 30 seconds
     _statusPollTimer = Timer.periodic(
       const Duration(seconds: 30),
       (_) => _loadTrackingData(silent: true),
@@ -70,7 +70,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
         _calculateETA();
       }
 
-      // ✅ Start live tracking only for active deliveries
+      //  Start live tracking only for active deliveries
       if (tracking.status == 'PICKED_UP' ||
           tracking.status == 'OUT_FOR_DELIVERY') {
         _trackingService.startLiveTracking(tracking.partnerId, (location) {
@@ -125,7 +125,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
         _tracking!.dropLocation.longitude,
       ),
       icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
-      infoWindow: const InfoWindow(title: '🏠 Your Location'),
+      infoWindow: const InfoWindow(title: ' Your Location'),
     ));
 
     if (_tracking!.currentLocation != null) {
@@ -203,9 +203,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
     }
   }
 
-  // ================================================================
-  //  BUILD
-  // ================================================================
+ 
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -215,7 +213,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
       );
     }
 
-    // ✅ Nice error state — order still PENDING
+  
     if (_tracking == null || _errorMessage != null) {
       return Scaffold(
         appBar: _buildAppBar(),
@@ -227,7 +225,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
       appBar: _buildAppBar(),
       body: Column(
         children: [
-          // ✅ Status banner at top
+          //  Status banner at top
           _buildStatusBanner(),
 
           // Map
@@ -324,7 +322,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
     );
   }
 
-  // ✅ Pending/No tracking state
+  //  Pending/No tracking state
   Widget _buildPendingState() {
     return Center(
       child: Padding(
@@ -406,7 +404,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
     );
   }
 
-  // ✅ Colored status banner
+  //  Colored status banner
   Widget _buildStatusBanner() {
     final statusConfig = _getStatusConfig(_tracking!.status);
     return Container(
@@ -454,7 +452,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
         };
       case 'DELIVERED':
         return {
-          'label': '✅ Delivered Successfully!',
+          'label': 'Delivered Successfully!',
           'icon': Icons.check_circle,
           'color': Colors.green,
         };

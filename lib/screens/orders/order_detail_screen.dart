@@ -48,9 +48,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     }
   }
 
-  // ================================================================
-  //  BOTTOM BAR — smart logic
-  // ================================================================
+  
   Widget _buildBottomBar(BuildContext context) {
     final order = _order!;
     final isTrackable = [
@@ -58,7 +56,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       'ASSIGNED', 'PICKED_UP', 'OUT_FOR_DELIVERY',
     ].contains(order.status.toUpperCase());
 
-    // Sirf Cancel — not trackable but canCancel
+    
     if (!isTrackable && order.canCancel) {
       return _CancelBottomBar(
         orderId: order.id,
@@ -66,7 +64,6 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       );
     }
 
-    // Sirf Track — trackable but cannot cancel
     if (isTrackable && !order.canCancel) {
       return Container(
         color: Colors.white,
@@ -101,7 +98,6 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       );
     }
 
-    // Dono — Track + Cancel
     if (isTrackable && order.canCancel) {
       return Container(
         color: Colors.white,
@@ -166,7 +162,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       );
     }
 
-    // DELIVERED / CANCELLED — koi button nahi
+   
     return const SizedBox.shrink();
   }
 
@@ -229,9 +225,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     );
   }
 
-  // ================================================================
-  //  BUILD
-  // ================================================================
+  
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -291,7 +285,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                                         ? 'This order has already been cancelled.'
                                         : _order!.status.toUpperCase() ==
                                                 'DELIVERED'
-                                            ? 'Order delivered successfully! 🎉'
+                                            ? 'Order delivered successfully! '
                                             : 'You can no longer cancel this order.',
                                     style: TextStyle(
                                       fontSize: 12,
@@ -360,9 +354,9 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   }
 }
 
-// ================================================================
+
 //  STATUS CARD
-// ================================================================
+
 class _StatusCard extends StatelessWidget {
   final Order order;
 
@@ -465,16 +459,16 @@ class _StatusCard extends StatelessWidget {
       case 'ASSIGNED':      return 'Delivery partner assigned';
       case 'PICKED_UP':     return 'Food picked up from restaurant';
       case 'OUT_FOR_DELIVERY': return 'Your order is on the way!';
-      case 'DELIVERED':     return 'Delivered! Enjoy your meal 🎉';
+      case 'DELIVERED':     return 'Delivered! Enjoy your meal ';
       case 'CANCELLED':     return 'This order has been cancelled';
       default:              return 'Processing your order';
     }
   }
 }
 
-// ================================================================
+
 //  RESTAURANT INFO
-// ================================================================
+
 class _RestaurantInfo extends StatelessWidget {
   final Order order;
 
@@ -532,9 +526,8 @@ class _RestaurantInfo extends StatelessWidget {
   }
 }
 
-// ================================================================
 //  ORDER ITEMS
-// ================================================================
+
 class _OrderItems extends StatelessWidget {
   final Order order;
 
@@ -634,9 +627,9 @@ class _OrderItems extends StatelessWidget {
   }
 }
 
-// ================================================================
+
 //  DELIVERY INFO
-// ================================================================
+
 class _DeliveryInfo extends StatelessWidget {
   final Order order;
 
@@ -688,9 +681,9 @@ class _DeliveryInfo extends StatelessWidget {
   }
 }
 
-// ================================================================
+
 //  PRICE SUMMARY
-// ================================================================
+
 class _PriceSummary extends StatelessWidget {
   final Order order;
 
@@ -802,9 +795,9 @@ class _PriceSummary extends StatelessWidget {
   }
 }
 
-// ================================================================
+
 //  CANCEL BOTTOM BAR
-// ================================================================
+
 class _CancelBottomBar extends StatelessWidget {
   final int orderId;
   final VoidCallback onCancelled;

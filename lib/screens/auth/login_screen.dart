@@ -3,6 +3,8 @@ import '../../config/app_theme.dart';
 import '../../services/auth_service.dart';
 import '../home/home_screen.dart';
 import 'register_screen.dart';
+import '../auth/forgot_password_screen.dart';
+
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -11,16 +13,17 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
+
 class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _authService = AuthService();
-  
+
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  
+
   bool _isLoading = false;
   bool _obscurePassword = true;
-  
+
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
@@ -38,20 +41,14 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     );
 
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _animationController,
-        curve: Curves.easeIn,
-      ),
+      CurvedAnimation(parent: _animationController, curve: Curves.easeIn),
     );
 
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0, 0.5),
       end: Offset.zero,
     ).animate(
-      CurvedAnimation(
-        parent: _animationController,
-        curve: Curves.easeOutCubic,
-      ),
+      CurvedAnimation(parent: _animationController, curve: Curves.easeOutCubic),
     );
 
     _animationController.forward();
@@ -66,11 +63,9 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   }
 
   Future<void> _login() async {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
+    if (!_formKey.currentState!.validate()) return;
 
-    FocusScope.of(context).unfocus(); // Hide keyboard
+    FocusScope.of(context).unfocus();
     setState(() => _isLoading = true);
 
     try {
@@ -80,7 +75,6 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       );
 
       if (mounted) {
-        // Show success animation
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
@@ -97,14 +91,14 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
           ),
         );
 
-        // Navigate after delay
         await Future.delayed(const Duration(milliseconds: 500));
-        
+
         if (mounted) {
           Navigator.pushReplacement(
             context,
             PageRouteBuilder(
-              pageBuilder: (context, animation, secondaryAnimation) => const HomeScreen(),
+              pageBuilder: (context, animation, secondaryAnimation) =>
+                  const HomeScreen(),
               transitionsBuilder: (context, animation, secondaryAnimation, child) {
                 return FadeTransition(opacity: animation, child: child);
               },
@@ -117,26 +111,24 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       if (mounted) {
         String errorTitle = 'Login Failed';
         String errorMessage = e.toString().replaceAll('Exception: ', '');
-        
+
         if (errorMessage.toLowerCase().contains('password')) {
           errorTitle = 'Invalid Password';
-        } else if (errorMessage.toLowerCase().contains('email') || 
-                   errorMessage.toLowerCase().contains('not found')) {
+        } else if (errorMessage.toLowerCase().contains('email') ||
+            errorMessage.toLowerCase().contains('not found')) {
           errorTitle = 'Account Not Found';
-        } else if (errorMessage.toLowerCase().contains('locked') || 
-                   errorMessage.toLowerCase().contains('disabled')) {
+        } else if (errorMessage.toLowerCase().contains('locked') ||
+            errorMessage.toLowerCase().contains('disabled')) {
           errorTitle = 'Account Locked';
-        } else if (errorMessage.toLowerCase().contains('internet') || 
-                   errorMessage.toLowerCase().contains('connection')) {
+        } else if (errorMessage.toLowerCase().contains('internet') ||
+            errorMessage.toLowerCase().contains('connection')) {
           errorTitle = 'Connection Error';
         }
-        
+
         _showErrorDialog(errorTitle, errorMessage);
       }
     } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -191,10 +183,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
               ),
               child: const Text(
                 'OK',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
               ),
             ),
           ),
@@ -374,9 +363,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
         ),
       ),
       validator: (value) {
-        if (value == null || value.isEmpty) {
-          return 'Please enter your email';
-        }
+        if (value == null || value.isEmpty) return 'Please enter your email';
         if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
           return 'Please enter a valid email';
         }
@@ -429,12 +416,8 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
         ),
       ),
       validator: (value) {
-        if (value == null || value.isEmpty) {
-          return 'Please enter your password';
-        }
-        if (value.length < 6) {
-          return 'Password must be at least 6 characters';
-        }
+        if (value == null || value.isEmpty) return 'Please enter your password';
+        if (value.length < 6) return 'Password must be at least 6 characters';
         return null;
       },
     );
@@ -444,14 +427,10 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     return Align(
       alignment: Alignment.centerRight,
       child: TextButton(
-        onPressed: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Forgot password feature coming soon'),
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        },
+        onPressed: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const ForgotPasswordScreen()),
+        ),
         child: const Text(
           'Forgot Password?',
           style: TextStyle(
@@ -546,12 +525,14 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                 ),
               );
             },
-            icon: const Text('G', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            icon: const Text('G',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             label: const Text('Google'),
             style: OutlinedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 12),
               side: BorderSide(color: Colors.grey.shade300),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
             ),
           ),
         ),
@@ -571,7 +552,8 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
             style: OutlinedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 12),
               side: BorderSide(color: Colors.grey.shade300),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
             ),
           ),
         ),
@@ -585,18 +567,17 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       children: [
         Text(
           "Don't have an account? ",
-          style: TextStyle(
-            fontSize: 15,
-            color: AppTheme.textSecondary,
-          ),
+          style: TextStyle(fontSize: 15, color: AppTheme.textSecondary),
         ),
         TextButton(
           onPressed: () {
             Navigator.push(
               context,
               PageRouteBuilder(
-                pageBuilder: (context, animation, secondaryAnimation) => const RegisterScreen(),
-                transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                pageBuilder: (context, animation, secondaryAnimation) =>
+                    const RegisterScreen(),
+                transitionsBuilder:
+                    (context, animation, secondaryAnimation, child) {
                   return SlideTransition(
                     position: Tween<Offset>(
                       begin: const Offset(1, 0),

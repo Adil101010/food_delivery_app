@@ -20,7 +20,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     });
   }
 
-  // ✅ ADD THIS METHOD
+  
   String _formatTime(DateTime dateTime) {
     final now = DateTime.now();
     final difference = now.difference(dateTime);
@@ -73,7 +73,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 return _NotificationCard(
                   notification: notification,
                   onTap: () => _handleNotificationTap(notification),
-                  formatTime: _formatTime,  // ✅ PASS METHOD
+                  formatTime: _formatTime,  
                 );
               },
             ),
@@ -280,12 +280,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 class _NotificationCard extends StatelessWidget {
   final NotificationModel notification;
   final VoidCallback onTap;
-  final String Function(DateTime) formatTime;  // ✅ ADD THIS
+  final String Function(DateTime) formatTime;  
 
   const _NotificationCard({
     required this.notification,
     required this.onTap,
-    required this.formatTime,  // ✅ ADD THIS
+    required this.formatTime,  
   });
 
   @override
@@ -383,7 +383,7 @@ class _NotificationCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        formatTime(notification.createdAt),  // ✅ USE METHOD HERE
+                        formatTime(notification.createdAt),  
                         style: TextStyle(
                           fontSize: 12,
                           color: AppTheme.textLight,

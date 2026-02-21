@@ -23,9 +23,9 @@ class _HomeScreenState extends State<HomeScreen> {
   String _userEmail = '';
   String _userName = '';
   final _searchController = TextEditingController();
-  final _searchFocusNode = FocusNode(); // ✅ FIX 5: mic ke liye
+  final _searchFocusNode = FocusNode(); 
 
-  // ✅ FIX 2: favorites state
+  
   Set<int> _favoriteIds = {};
   final Map<int, bool> _togglingFavorite = {};
 
@@ -45,7 +45,7 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  // ✅ FIX 2: favorites load
+
   Future<void> _loadFavorites() async {
     try {
       final ids = await _favoriteService.getUserFavoriteRestaurantIds();
@@ -53,13 +53,13 @@ class _HomeScreenState extends State<HomeScreen> {
     } catch (_) {}
   }
 
-  // ✅ FIX 2: toggle favorite
+ 
   Future<void> _toggleFavorite(int restaurantId) async {
     if (_togglingFavorite[restaurantId] == true) return;
 
     setState(() => _togglingFavorite[restaurantId] = true);
 
-    // Optimistic update
+    
     setState(() {
       if (_favoriteIds.contains(restaurantId)) {
         _favoriteIds.remove(restaurantId);
@@ -71,7 +71,7 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       await _favoriteService.toggleFavorite(restaurantId);
     } catch (_) {
-      // Rollback on error
+      
       setState(() {
         if (_favoriteIds.contains(restaurantId)) {
           _favoriteIds.remove(restaurantId);
@@ -135,9 +135,7 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
-  // ================================================================
-  //  BUILD
-  // ================================================================
+ 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -168,16 +166,16 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ================================================================
-  //  ORANGE HEADER  ✅ FIX 4: address click → /address
-  // ================================================================
+
+  //   HEADER 
+  
   Widget _buildOrangeHeader() {
     return SliverToBoxAdapter(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
         child: Row(
           children: [
-            // ✅ Address block — clickable
+            //  Address block 
             GestureDetector(
               onTap: () => Navigator.pushNamed(context, '/address'),
               child: Container(
@@ -211,7 +209,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           ],
                         ),
                         Text(
-                          'Hi $_userName 👋',
+                          'Hi $_userName ',
                           style: const TextStyle(
                             color: Colors.white70,
                             fontSize: 11,
@@ -262,9 +260,9 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ================================================================
-  //  SEARCH BAR  ✅ FIX 5: mic opens keyboard/focus
-  // ================================================================
+ 
+  //  SEARCH BAR  
+ 
   Widget _buildSearchBar() {
     return SliverToBoxAdapter(
       child: Container(
@@ -312,7 +310,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     color: AppTheme.textSecondary, size: 20),
               )
             else
-              // ✅ FIX 5: mic taps → keyboard opens
+             
               GestureDetector(
                 onTap: () {
                   FocusScope.of(context).requestFocus(_searchFocusNode);
@@ -326,9 +324,9 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ================================================================
-  //  OFFERS SECTION  ✅ FIX 3: overflow fix — no Spacer, fixed layout
-  // ================================================================
+ 
+  //  OFFERS SECTION  
+ 
   Widget _buildOffersSection() {
     final offers = [
       {
@@ -353,7 +351,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return SliverToBoxAdapter(
       child: SizedBox(
-        height: 155, // ✅ Fixed height — no overflow
+        height: 155, 
         child: ListView.builder(
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
@@ -372,7 +370,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ✅ FIX 3: Spacer hataya, fixed Column layout
+  
   Widget _buildOfferCard(
       String title, String subtitle, Color color, String icon) {
     return Container(
@@ -486,9 +484,8 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ================================================================
-  //  CATEGORIES  ✅ FIX 1: Biryani image URL fixed
-  // ================================================================
+
+ 
   Widget _buildCategoriesSection() {
     final categories = [
       {
@@ -503,7 +500,7 @@ class _HomeScreenState extends State<HomeScreen> {
       },
       {
         'name': 'Biryani',
-        // ✅ FIX 1: working biryani image URL
+       
         'image':
             'https://images.unsplash.com/photo-1589302168068-964664d93dc0?w=150&h=150&fit=crop',
       },
@@ -625,9 +622,9 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ================================================================
+ 
   //  WHITE BODY WRAPPER
-  // ================================================================
+  
   Widget _buildWhiteBody() {
     return SliverToBoxAdapter(
       child: Container(
@@ -683,9 +680,9 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ================================================================
+  
   //  RESTAURANT LIST
-  // ================================================================
+  
   Widget _buildRestaurantsList() {
     if (_isLoading) {
       return const Padding(
@@ -731,9 +728,9 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ================================================================
-  //  RESTAURANT CARD  ✅ FIX 2: working favorite toggle
-  // ================================================================
+  
+  //  RESTAURANT CARD 
+  
   Widget _buildRestaurantCard(Restaurant restaurant) {
     final isFav = _favoriteIds.contains(restaurant.id);
     final isToggling = _togglingFavorite[restaurant.id] == true;
@@ -826,7 +823,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
 
-                // ✅ FIX 2: Favourite button — working toggle
+                //  Favourite button 
                 Positioned(
                   top: 12,
                   right: 12,
@@ -952,7 +949,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ── Helpers ──────────────────────────────────────────────────────
+  // Helpers
 
   Widget _restaurantImagePlaceholder() {
     return Container(

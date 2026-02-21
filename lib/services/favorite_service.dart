@@ -1,5 +1,3 @@
-// lib/services/favorite_service.dart
-
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../config/api_config.dart';

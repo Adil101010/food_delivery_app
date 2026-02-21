@@ -1,5 +1,3 @@
-// lib/screens/reviews/write_review_screen.dart
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../config/app_theme.dart';
@@ -360,13 +358,13 @@ class _WriteReviewScreenState extends State<WriteReviewScreen> {
     try {
       await context.read<ReviewProvider>().createReview(
         restaurantId: widget.restaurantId,
-        orderId: widget.orderId ?? 1,           // ✅ Use widget orderId or default to 1
-        type: 'RESTAURANT',                     // ✅ Review type
+        orderId: widget.orderId ?? 1,           
+        type: 'RESTAURANT',                   
         rating: _rating,
         comment: _commentController.text.trim().isEmpty 
             ? null 
             : _commentController.text.trim(),
-        menuItemId: widget.menuItemId,          // ✅ Use widget menuItemId (can be null)
+        menuItemId: widget.menuItemId,         
       );
 
       if (mounted) {

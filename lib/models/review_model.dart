@@ -1,5 +1,3 @@
-// lib/models/review_model.dart
-
 class ReviewModel {
   final int id;
   final int userId;

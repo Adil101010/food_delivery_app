@@ -1,5 +1,3 @@
-// lib/providers/review_provider.dart
-
 import 'package:flutter/material.dart';
 import '../models/review_model.dart';
 import '../services/review_service.dart';
@@ -12,7 +10,7 @@ class ReviewProvider with ChangeNotifier {
   bool _isLoading = false;
   String? _error;
 
-  // Getters
+  
   List<ReviewModel> get reviews => _reviews;
   RatingStatsModel? get restaurantStats => _restaurantStats;
   bool get isLoading => _isLoading;
@@ -25,11 +23,11 @@ class ReviewProvider with ChangeNotifier {
     return total / _reviews.length;
   }
 
-  /// Create review - ✅ UPDATED WITH orderId and type
+  /// Create review -
   Future<ReviewModel?> createReview({
     required int restaurantId,
-    required int orderId,        // ✅ REQUIRED
-    required String type,         // ✅ REQUIRED (RESTAURANT, MENU_ITEM, DELIVERY)
+    required int orderId,      
+    required String type,         
     required double rating,
     String? comment,
     int? menuItemId,
@@ -43,15 +41,15 @@ class ReviewProvider with ChangeNotifier {
       
       final review = await _reviewService.createReview(
         restaurantId: restaurantId,
-        orderId: orderId,          // ✅ PASS IT
-        type: type,                // ✅ PASS IT
+        orderId: orderId,          
+        type: type,                
         rating: rating,
         comment: comment,
         menuItemId: menuItemId,
       );
       
       if (review != null) {
-        _reviews.insert(0, review); // Add to beginning
+        _reviews.insert(0, review); 
         notifyListeners();
         print('ReviewProvider: Review created successfully');
         print('   Review ID: ${review.id}');
@@ -62,7 +60,7 @@ class ReviewProvider with ChangeNotifier {
       _error = e.toString();
       print('ReviewProvider: Error creating review - $e');
       notifyListeners();
-      rethrow;  // ✅ Rethrow to show error in UI
+      rethrow;  
     }
   }
 
@@ -93,7 +91,7 @@ class ReviewProvider with ChangeNotifier {
     }
   }
 
-  /// Load user reviews
+  // Load user reviews
   Future<void> loadUserReviews() async {
     _isLoading = true;
     _error = null;
@@ -130,7 +128,7 @@ class ReviewProvider with ChangeNotifier {
     }
   }
 
-  /// Load menu item reviews
+  //// Load menu item reviews
   Future<void> loadMenuItemReviews(int menuItemId) async {
     _isLoading = true;
     _error = null;
@@ -260,18 +258,18 @@ class ReviewProvider with ChangeNotifier {
     print('═══════════════════════════════════');
   }
 
-  /// Check if user can review (has completed order)
+  
   Future<bool> canUserReview(int orderId) async {
     try {
       final existingReview = await getReviewByOrderId(orderId);
-      return existingReview == null; // Can review if no review exists
+      return existingReview == null; 
     } catch (e) {
       print('ReviewProvider: Error checking review eligibility - $e');
       return false;
     }
   }
 
-  /// Get statistics for display
+  
   Map<String, dynamic> getStatistics() {
     return {
       'total': _reviews.length,

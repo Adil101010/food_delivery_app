@@ -74,7 +74,7 @@ class Order {
     );
   }
 
-  // NEW: Formatted date getter
+  
   String? get formattedCreatedAt {
     try {
       final now = DateTime.now();

@@ -20,7 +20,7 @@ class CartScreen extends StatefulWidget {
 
 class _CartScreenState extends State<CartScreen> {
   bool _isProcessingOrder = false;
-  bool _isBillExpanded = false; // ✅ Bill collapse/expand
+  bool _isBillExpanded = false; //  Bill collapse/expand
 
   final _couponController = TextEditingController();
   String _couponCode = '';
@@ -214,7 +214,7 @@ class _CartScreenState extends State<CartScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
-      resizeToAvoidBottomInset: true, // ✅ keyboard ke saath scroll hoga
+      resizeToAvoidBottomInset: true, 
       appBar: _buildAppBar(),
       body: _isProcessingOrder
           ? Center(
@@ -241,7 +241,7 @@ class _CartScreenState extends State<CartScreen> {
 
                 return Column(
                   children: [
-                    // ✅ Items + Coupon scroll hoga
+                   
                     Expanded(
                       child: SingleChildScrollView(
                         keyboardDismissBehavior:
@@ -263,13 +263,13 @@ class _CartScreenState extends State<CartScreen> {
                             ),
                             const SizedBox(height: 8),
                             _buildCouponSection(),
-                            const SizedBox(height: 100), // bottom bar space
+                            const SizedBox(height: 100), 
                           ],
                         ),
                       ),
                     ),
 
-                    // ✅ Bill details + Checkout button — hamesha niche fixed
+                    
                     _buildBottomBillBar(cart),
                   ],
                 );
@@ -278,7 +278,7 @@ class _CartScreenState extends State<CartScreen> {
     );
   }
 
-  // ✅ Bottom Bar — Collapsed by default, tap se expand
+  
   Widget _buildBottomBillBar(CartProvider cart) {
     final finalTotal =
         cart.subtotal + cart.deliveryFee + cart.tax - _discountAmount;
@@ -301,7 +301,7 @@ class _CartScreenState extends State<CartScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // ✅ Tap karo to expand/collapse
+           
             InkWell(
               onTap: () => setState(() => _isBillExpanded = !_isBillExpanded),
               child: Padding(
@@ -356,7 +356,7 @@ class _CartScreenState extends State<CartScreen> {
               ),
             ),
 
-            // ✅ Expandable Bill Rows
+         
             AnimatedCrossFade(
               firstChild: const SizedBox(width: double.infinity),
               secondChild: Padding(
@@ -415,7 +415,7 @@ class _CartScreenState extends State<CartScreen> {
               duration: const Duration(milliseconds: 300),
             ),
 
-            // ✅ Checkout Button — hamesha visible
+           
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
               child: SizedBox(
@@ -464,7 +464,7 @@ class _CartScreenState extends State<CartScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text('🎟️ Apply Coupon',
+          const Text(' Apply Coupon',
               style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w700,
@@ -562,7 +562,7 @@ class _CartScreenState extends State<CartScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('🎉 $_couponCode Applied',
+                  Text(' $_couponCode Applied',
                       style: TextStyle(
                           color: Colors.green.shade700,
                           fontWeight: FontWeight.w600,
@@ -847,7 +847,7 @@ class _CartScreenState extends State<CartScreen> {
   }
 }
 
-// ─── Cart Item Card ───────────────────────────────────────────────────────────
+// Cart Item Card
 class _CartItemCard extends StatelessWidget {
   final dynamic item;
   final int index;
@@ -1003,7 +1003,7 @@ class _CartItemCard extends StatelessWidget {
   }
 }
 
-// ─── Placeholder Image ────────────────────────────────────────────────────────
+//  Placeholder Image 
 class _PlaceholderImage extends StatelessWidget {
   const _PlaceholderImage();
 
@@ -1021,7 +1021,7 @@ class _PlaceholderImage extends StatelessWidget {
   }
 }
 
-// ─── Coupon Chip ──────────────────────────────────────────────────────────────
+//  Coupon Chip 
 class _CouponChip extends StatelessWidget {
   final String code;
   final String desc;
@@ -1059,7 +1059,7 @@ class _CouponChip extends StatelessWidget {
   }
 }
 
-// ─── Bill Row ─────────────────────────────────────────────────────────────────
+//  Bill Row 
 class _BillRow extends StatelessWidget {
   final String label;
   final String value;

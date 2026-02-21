@@ -53,30 +53,30 @@ class Restaurant {
       cuisine: json['cuisine'] ?? 'Multi-cuisine',
       rating: (json['rating'] ?? 0.0).toDouble(),
       
-      // Handle both camelCase and snake_case for avgDeliveryTime
+    
       avgDeliveryTime: json['avgDeliveryTime'] ?? 
                        json['avg_delivery_time'] ?? 
                        json['deliveryTime'] ?? 
                        json['delivery_time'],
       
-      // Handle both camelCase and snake_case for deliveryFee
+     
       deliveryFee: json['deliveryFee'] != null 
           ? (json['deliveryFee']).toDouble() 
           : (json['delivery_fee'] != null 
               ? (json['delivery_fee']).toDouble() 
               : null),
       
-      // Handle both camelCase and snake_case for isActive
+     
       isActive: json['isActive'] ?? json['is_active'] ?? true,
       
-      // Handle both camelCase and snake_case for isOpen
+  
       isOpen: json['isOpen'] ?? json['is_open'] ?? false,
       
-      // Handle both camelCase and snake_case for times
+     
       openingTime: json['openingTime'] ?? json['opening_time'] ?? '09:00:00',
       closingTime: json['closingTime'] ?? json['closing_time'] ?? '23:00:00',
       
-      // Handle both camelCase and snake_case for imageUrl
+      
       imageUrl: json['imageUrl'] ?? json['image_url'],
     );
   }

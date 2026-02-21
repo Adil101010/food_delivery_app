@@ -1,5 +1,3 @@
-// lib/screens/address/address_list_screen.dart
-
 import 'package:flutter/material.dart';
 import '../../config/app_theme.dart';
 import '../../models/address.dart';

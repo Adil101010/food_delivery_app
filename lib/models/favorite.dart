@@ -1,5 +1,3 @@
-// lib/models/favorite.dart
-
 class Favorite {
   final int? id;
   final int userId;
