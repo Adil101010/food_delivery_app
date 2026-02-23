@@ -18,41 +18,89 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
   bool _isLoading = true;
   String? _error;
 
+  int _currentPage = 0;
+bool _isLoadingMore = false;
+bool _hasMore = true;
+final ScrollController _scrollController = ScrollController(); 
+
   final List<String> _filters = ['All', 'Ongoing', 'Completed', 'Cancelled'];
   String _selectedFilter = 'All';
 
   @override
-  void initState() {
-    super.initState();
-    _loadOrders();
-  }
 
-  Future<void> _loadOrders() async {
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
+void initState() {
+  super.initState();
+  _loadOrders();
 
-    try {
-      final orders = await _orderService.getUserOrders();
-      orders.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+  _scrollController.addListener(() {
+    if (_scrollController.position.pixels >=
+            _scrollController.position.maxScrollExtent - 200 &&
+        !_isLoadingMore &&
+        _hasMore &&
+        !_isLoading) {
+      _loadMoreOrders();
+    }
+  });
+}
+@override
+void dispose() {
+  _scrollController.dispose();
+  super.dispose();
+}
 
-      if (mounted) {
-        setState(() {
-          _orders = orders;
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _error = e.toString().replaceAll('Exception: ', '');
-          _isLoading = false;
-        });
-      }
+ Future<void> _loadOrders() async {
+  setState(() {
+    _isLoading = true;
+    _error = null;
+    _currentPage = 0;
+    _hasMore = true;
+  });
+
+  try {
+    final orders =
+        await _orderService.getUserOrders(page: _currentPage);
+
+    orders.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+    if (mounted) {
+      setState(() {
+        _orders = orders;
+        _isLoading = false;
+        _hasMore = orders.length == 10;
+      });
+    }
+  } catch (e) {
+    if (mounted) {
+      setState(() {
+        _error = e.toString().replaceAll('Exception: ', '');
+        _isLoading = false;
+      });
     }
   }
+}
 
+ Future<void> _loadMoreOrders() async {
+  setState(() => _isLoadingMore = true);
+
+  _currentPage++;
+
+  try {
+    final moreOrders =
+        await _orderService.getUserOrders(page: _currentPage);
+
+    if (mounted) {
+      setState(() {
+        _orders.addAll(moreOrders);
+        _isLoadingMore = false;
+        _hasMore = moreOrders.length == 10;
+      });
+    }
+  } catch (e) {
+    if (mounted) {
+      setState(() => _isLoadingMore = false);
+    }
+  }
+}
   List<Order> get _filteredOrders {
     switch (_selectedFilter) {
       case 'Ongoing':
@@ -127,11 +175,24 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                             child: filtered.isEmpty
                                 ? _buildFilterEmptyState()
                                 : ListView.builder(
+  controller: _scrollController,
                                     padding: const EdgeInsets.fromLTRB(
                                         16, 8, 16, 16),
-                                    itemCount: filtered.length,
-                                    itemBuilder: (context, index) {
-                                      final order = filtered[index];
+                                 itemCount: filtered.length + (_isLoadingMore ? 1 : 0),
+                                  itemBuilder: (context, index) {
+
+  if (index >= filtered.length) {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Center(
+        child: CircularProgressIndicator(
+          color: AppTheme.primary,
+        ),
+      ),
+    );
+  }
+
+  final order = filtered[index];
                                       return _OrderCard(
                                         order: order,
                                         onTap: () =>

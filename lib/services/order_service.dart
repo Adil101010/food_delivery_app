@@ -79,62 +79,53 @@ class OrderService {
   }
 
 
-  Future<List<Order>> getUserOrders() async {
-    try {
-      final token = await TokenManager.getStoredToken();
-      final userId = await TokenManager.getUserId();
+  Future<List<Order>> getUserOrders({int page = 0, int size = 10}) async {
+  try {
+    final token = await TokenManager.getStoredToken();
+    final userId = await TokenManager.getUserId();
 
-      if (token == null || userId == null) {
-        throw Exception('Please login to view orders');
-      }
-
-      print(' OrderService: Token retrieved');
-      print(' Fetching orders for user: $userId');
-
-      final response = await _dio.get(
-        '$_baseUrl/api/orders/user/$userId',
-        options: Options(
-          headers: {
-            'Authorization': 'Bearer $token',
-          },
-        ),
-      );
-
-      print(' Orders response status: ${response.statusCode}');
-
-      if (response.statusCode == 200) {
-        final data = response.data;
-
-        List<dynamic> ordersJson;
-        if (data is Map && data['data'] != null) {
-          ordersJson = data['data'] as List;
-        } else if (data is List) {
-          ordersJson = data;
-        } else {
-          throw Exception('Invalid response format');
-        }
-
-        final orders = ordersJson.map((json) => Order.fromJson(json)).toList();
-        print(' Parsed ${orders.length} orders');
-        return orders;
-      } else {
-        throw Exception('Failed to fetch orders');
-      }
-    } on DioException catch (e) {
-      print(' Error fetching orders: ${e.message}');
-      
-      if (e.response?.statusCode == 401) {
-        await TokenManager.clearAuthData();
-        throw Exception('Session expired. Please login again.');
-      }
-      
-      throw Exception('Failed to load orders. Please try again.');
-    } catch (e) {
-      print(' Unexpected error: $e');
-      throw Exception('Failed to load orders');
+    if (token == null || userId == null) {
+      throw Exception('Please login to view orders');
     }
-  }
 
+    final response = await _dio.get(
+      '$_baseUrl/api/orders/user/$userId?page=$page&size=$size',
+      options: Options(
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      ),
+    );
+
+    if (response.statusCode == 200) {
+      final data = response.data;
+
+      if (data is Map && data['data'] != null) {
+        final pageData = data['data'];
+
+        if (pageData['content'] != null) {
+          List<dynamic> ordersJson = pageData['content'];
+
+          return ordersJson
+              .map((json) => Order.fromJson(json))
+              .toList();
+        } else {
+          throw Exception('Invalid pagination response format');
+        }
+      } else {
+        throw Exception('Invalid response format');
+      }
+    } else {
+      throw Exception('Failed to fetch orders');
+    }
+  } on DioException catch (e) {
+    if (e.response?.statusCode == 401) {
+      await TokenManager.clearAuthData();
+      throw Exception('Session expired. Please login again.');
+    }
+    throw Exception('Failed to load orders. Please try again.');
+  }
+}
 
 
   Future<Order> getOrderById(int orderId) async {
