@@ -1,141 +1,118 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
-import 'package:razorpay_flutter/razorpay_flutter.dart';
+import 'package:dio/dio.dart';
 import '../config/api_config.dart';
-import '../models/payment_order_request.dart';
-import '../models/payment_order_response.dart';
-import '../models/payment_verification_request.dart';
 import 'token_manager.dart';
 
 class PaymentService {
-  final String baseUrl = ApiConfig.baseUrl;
-  late Razorpay _razorpay;
+  late final Dio _dio;
 
   PaymentService() {
-    _razorpay = Razorpay();
+    _dio = Dio(BaseOptions(
+      baseUrl: ApiConfig.baseUrl,
+      connectTimeout: ApiConfig.connectTimeout,
+      receiveTimeout: ApiConfig.receiveTimeout,
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+    ));
+
+    _dio.interceptors.add(InterceptorsWrapper(
+      onRequest: (options, handler) async {
+        final token = await TokenManager.getToken();
+        if (token != null) {
+          options.headers['Authorization'] = 'Bearer $token';
+        }
+        print('  PAYMENT[${options.method}] => ${options.path}');
+        return handler.next(options);
+      },
+      onResponse: (response, handler) {
+        print('  RESPONSE[${response.statusCode}] => ${response.requestOptions.path}');
+        return handler.next(response);
+      },
+      onError: (error, handler) {
+        print('  PAYMENT ERROR[${error.response?.statusCode}] => ${error.message}');
+        print('   Data: ${error.response?.data}');
+        return handler.next(error);
+      },
+    ));
   }
 
-  Future<PaymentOrderResponse> createRazorpayOrder({
+ 
+  Future<Map<String, dynamic>> verifyPayment({
     required int orderId,
-    required double amount,
-  }) async {
-    try {
-      final token = await TokenManager.getToken();
-
-      final request = PaymentOrderRequest(
-        orderId: orderId,
-        amount: amount,
-      );
-
-      print('Creating Razorpay order: ${request.toJson()}');
-
-      final response = await http.post(
-        Uri.parse('$baseUrl/api/payments/razorpay/create-order'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-        body: json.encode(request.toJson()),
-      ).timeout(Duration(seconds: 30));
-
-      print('Create order response: ${response.statusCode} - ${response.body}');
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        return PaymentOrderResponse.fromJson(data['data']);
-      } else {
-        throw Exception('Failed to create payment order: ${response.body}');
-      }
-    } catch (e) {
-      print('Error creating Razorpay order: $e');
-      throw Exception('Network error: $e');
-    }
-  }
-
-  Future<bool> verifyPayment({
     required String razorpayOrderId,
     required String razorpayPaymentId,
     required String razorpaySignature,
   }) async {
     try {
-      final token = await TokenManager.getToken();
+      print('  Verifying payment for order: $orderId');
+      print('   Razorpay Order ID: $razorpayOrderId');
+      print('   Razorpay Payment ID: $razorpayPaymentId');
 
-      final request = PaymentVerificationRequest(
-        razorpayOrderId: razorpayOrderId,
-        razorpayPaymentId: razorpayPaymentId,
-        razorpaySignature: razorpaySignature,
+      final response = await _dio.post(
+        '/api/orders/verify-payment',
+        data: {
+          'orderId': orderId,
+          'razorpayOrderId': razorpayOrderId,
+          'razorpayPaymentId': razorpayPaymentId,
+          'razorpaySignature': razorpaySignature,
+          'paymentStatus': 'PAID',
+        },
       );
 
-      print('Verifying payment: ${request.toJson()}');
-
-      final response = await http.post(
-        Uri.parse('$baseUrl/api/payments/razorpay/verify-payment'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-        body: json.encode(request.toJson()),
-      ).timeout(Duration(seconds: 30));
-
-      print('Verify payment response: ${response.statusCode} - ${response.body}');
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        return data['data']['verified'] == true;
-      } else {
-        return false;
-      }
-    } catch (e) {
-      print('Error verifying payment: $e');
-      return false;
+      print('  Payment verified successfully');
+      return response.data;
+    } on DioException catch (e) {
+      print('  Verification failed: ${e.response?.data}');
+      throw Exception(
+        e.response?.data?['message'] ?? 'Payment verification failed',
+      );
     }
   }
 
-  void openRazorpayCheckout({
-    required PaymentOrderResponse paymentOrder,
-    required String userEmail,
-    required String userPhone,
-    required Function(PaymentSuccessResponse) onSuccess,
-    required Function(PaymentFailureResponse) onFailure,
-  }) {
-    var options = {
-      'key': paymentOrder.razorpayKey,
-      'amount': (paymentOrder.amount * 100).toInt(), // Amount in paise
-      'currency': paymentOrder.currency,
-      'name': 'Food Delivery',
-      'description': 'Order Payment',
-      'order_id': paymentOrder.razorpayOrderId,
-      'prefill': {
-        'email': userEmail,
-        'contact': userPhone,
-      },
-      'theme': {
-        'color': '#FF6B35'
-      }
-    };
-
-    _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, (PaymentSuccessResponse response) {
-      print('Payment Success: ${response.paymentId}');
-      onSuccess(response);
-    });
-
-    _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, (PaymentFailureResponse response) {
-      print('Payment Error: ${response.code} - ${response.message}');
-      onFailure(response);
-    });
-
-    _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, (ExternalWalletResponse response) {
-      print('External Wallet: ${response.walletName}');
-    });
-
+ 
+  Future<Map<String, dynamic>> processCOD({
+    required int orderId,
+    required int userId,
+  }) async {
     try {
-      _razorpay.open(options);
-    } catch (e) {
-      print('Error opening Razorpay: $e');
+      print('  Processing COD for order: $orderId, user: $userId');
+
+      final response = await _dio.post(
+        '/api/payments/cod/$orderId',
+        queryParameters: {'userId': userId},
+      );
+
+      print('  COD processed successfully');
+      return response.data;
+    } on DioException catch (e) {
+      print('  COD failed: ${e.response?.data}');
+      throw Exception(
+        e.response?.data?['message'] ?? 'COD processing failed',
+      );
     }
   }
 
-  void dispose() {
-    _razorpay.clear();
+  
+  Future<Map<String, dynamic>?> getPaymentByOrderId(int orderId) async {
+    try {
+      final response = await _dio.get('/api/payments/order/$orderId');
+      return response.data;
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) return null;
+      print('  Get payment failed: ${e.message}');
+      return null;
+    }
+  }
+
+ 
+  Future<List<dynamic>> getUserPayments(int userId) async {
+    try {
+      final response = await _dio.get('/api/payments/user/$userId');
+      return response.data['data'] ?? [];
+    } on DioException catch (e) {
+      print('  Get user payments failed: ${e.message}');
+      return [];
+    }
   }
 }
