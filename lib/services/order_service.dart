@@ -15,7 +15,7 @@ class OrderService {
           connectTimeout: ApiConfig.connectTimeout,
           receiveTimeout: ApiConfig.receiveTimeout,
         )) {
-    print('🔧 OrderService initialized');
+    print('  OrderService initialized');
     print('   Base URL: $_baseUrl');
   }
 
