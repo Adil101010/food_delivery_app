@@ -1,15 +1,18 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
 class TokenManager {
-  static const String _tokenKey = 'auth_token';
-  static const String _userIdKey = 'user_id';
-  static const String _userNameKey = 'userName';
-  static const String _userEmailKey = 'userEmail';
-  static const String _userPhoneKey = 'userPhone';
+  //  Keys 
+  static const String _tokenKey        = 'auth_token';
+  static const String _refreshTokenKey = 'refresh_token'; 
+  static const String _userIdKey       = 'user_id';
+  static const String _userNameKey     = 'userName';
+  static const String _userEmailKey    = 'userEmail';
+  static const String _userPhoneKey    = 'userPhone';
 
-  // Save authentication data
+  //  Save 
   static Future<void> saveAuthData({
     required String token,
+     String refreshToken = '',
     required int userId,
     required String userName,
     required String userEmail,
@@ -17,115 +20,117 @@ class TokenManager {
   }) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_tokenKey, token);
+    await prefs.setString(_refreshTokenKey, refreshToken); 
     await prefs.setInt(_userIdKey, userId);
     await prefs.setString(_userNameKey, userName);
     await prefs.setString(_userEmailKey, userEmail);
     await prefs.setString(_userPhoneKey, userPhone);
-    
-    print('   Auth data saved successfully');
-    print('   UserId: $userId');
-    print('   User: $userName');
-    print('   Email: $userEmail');
-    print('   Phone: $userPhone');
+
+    print('  Auth data saved');
+    print('   UserId: $userId | User: $userName');
+    print('   Email: $userEmail | Phone: $userPhone');
+    print('   Access Token:   | Refresh Token: ${refreshToken.isNotEmpty ? "✅" : "❌"}');
   }
 
-  // Get stored token
+  //  Get Access Token 
   static Future<String?> getStoredToken() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString(_tokenKey);
   }
 
-  // Get token 
-  static Future<String?> getToken() async {
-    return await getStoredToken();
+  static Future<String?> getToken() async => getStoredToken();
+
+  //  Get Refresh Token  Naya
+  static Future<String?> getRefreshToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_refreshTokenKey);
   }
 
-  // Get user ID
+  //  Update Access Token Only  Naya
+  static Future<void> updateAccessToken(String newToken) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_tokenKey, newToken);
+    print(' Access token updated');
+  }
+
+  //  Get User Fields 
   static Future<int?> getUserId() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getInt(_userIdKey);
   }
 
-  // Get user name
   static Future<String?> getUserName() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString(_userNameKey);
   }
 
-  // Get user email
   static Future<String?> getUserEmail() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString(_userEmailKey);
   }
 
-  // Get user phone
   static Future<String?> getUserPhone() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString(_userPhoneKey);
   }
 
-  // Get user data 
+  //  Get All User Data 
   static Future<Map<String, dynamic>> getUserData() async {
     final prefs = await SharedPreferences.getInstance();
-    
-    final userId = prefs.getInt(_userIdKey);
-    final userName = prefs.getString(_userNameKey) ?? '';
+
+    final userId    = prefs.getInt(_userIdKey);
+    final userName  = prefs.getString(_userNameKey)  ?? '';
     final userEmail = prefs.getString(_userEmailKey) ?? '';
     final userPhone = prefs.getString(_userPhoneKey) ?? '';
-    
-    print('   Retrieved user data:');
-    print('   UserId: $userId');
-    print('   UserName: $userName');
-    print('   UserEmail: $userEmail');
-    print('   UserPhone: $userPhone');
-    
+
+    print('  Retrieved user data:');
+    print('   UserId: $userId | Name: $userName');
+    print('   Email: $userEmail | Phone: $userPhone');
+
     return {
-      'userId': userId,
-      'userName': userName,
+      'userId':    userId,
+      'userName':  userName,
       'userEmail': userEmail,
       'userPhone': userPhone,
     };
   }
 
-  // Update user data in SharedPreferences
+  //  Update Profile Fields
   static Future<void> updateUserData({
     String? userName,
     String? userPhone,
   }) async {
     final prefs = await SharedPreferences.getInstance();
-    
     if (userName != null) {
       await prefs.setString(_userNameKey, userName);
-      print(' Updated userName in storage: $userName');
+      print(' Updated userName: $userName');
     }
-    
     if (userPhone != null) {
       await prefs.setString(_userPhoneKey, userPhone);
-      print(' Updated userPhone in storage: $userPhone');
+      print(' Updated userPhone: $userPhone');
     }
   }
 
-  // Check if user is logged in
+  //  Login Check 
   static Future<bool> isLoggedIn() async {
-    final token = await getStoredToken();
-    final isLoggedIn = token != null && token.isNotEmpty;
-    print(' Login status: $isLoggedIn');
-    return isLoggedIn;
+    final token  = await getStoredToken();
+    final userId = await getUserId();
+    final status = token != null && token.isNotEmpty && userId != null;
+    print('🔍 Login status: $status');
+    return status;
   }
 
-  // Clear token (logout)
-  static Future<void> clearToken() async {
-    await clearAuthData();
-  }
+  // Logout / Clear 
+  static Future<void> clearToken() async => clearAuthData();
 
-  // Clear all authentication data
   static Future<void> clearAuthData() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_tokenKey);
+    await prefs.remove(_refreshTokenKey); 
     await prefs.remove(_userIdKey);
     await prefs.remove(_userNameKey);
     await prefs.remove(_userEmailKey);
     await prefs.remove(_userPhoneKey);
-    print(' Auth data cleared');
+    print('🗑️ Auth data cleared');
   }
 }
