@@ -25,6 +25,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void initState() {
     super.initState();
+    _checkAuthAndLoad(); // ✅ Direct _loadUserProfile() nahi
+  }
+
+  // ─────────────────────────────────────────
+  // Auth Check — login nahi hai toh login screen
+  // ─────────────────────────────────────────
+  Future<void> _checkAuthAndLoad() async {
+    final isLoggedIn = await TokenManager.isLoggedIn();
+    if (!isLoggedIn) {
+      if (mounted) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          Navigator.pushReplacementNamed(context, '/login');
+        });
+      }
+      return;
+    }
     _loadUserProfile();
   }
 
@@ -33,7 +49,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _isLoading = true;
       _errorMessage = null;
     });
-
     try {
       final user = await _apiService.getCurrentUser();
       setState(() {
@@ -48,12 +63,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  // ─────────────────────────────────────────
+  // Logout
+  // ─────────────────────────────────────────
   Future<void> _logout() async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16)),
         title: Column(
           children: [
             Container(
@@ -84,10 +102,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: OutlinedButton(
                   onPressed: () => Navigator.pop(context, false),
                   style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      side: BorderSide(color: Colors.grey.shade300),
+                      padding:
+                          const EdgeInsets.symmetric(vertical: 12),
+                      side: BorderSide(
+                          color: Colors.grey.shade300),
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12))),
+                          borderRadius:
+                              BorderRadius.circular(12))),
                   child: const Text('Cancel'),
                 ),
               ),
@@ -97,9 +118,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   onPressed: () => Navigator.pop(context, true),
                   style: ElevatedButton.styleFrom(
                       backgroundColor: AppTheme.error,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      padding:
+                          const EdgeInsets.symmetric(vertical: 12),
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12))),
+                          borderRadius:
+                              BorderRadius.circular(12))),
                   child: const Text('Logout',
                       style: TextStyle(color: Colors.white)),
                 ),
@@ -107,18 +130,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ],
           ),
         ],
-        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        actionsPadding:
+            const EdgeInsets.fromLTRB(16, 0, 16, 16),
       ),
     );
 
     if (confirm == true) {
-      await TokenManager.clearToken();
+      await TokenManager.clearAuthData(); //  clearToken() → clearAuthData()
       if (mounted) {
         Navigator.pushReplacementNamed(context, '/login');
       }
     }
   }
 
+  // ═══════════════════════════════════════════
+  //  BUILD
+  // ═══════════════════════════════════════════
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -131,18 +158,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 color: AppTheme.textPrimary)),
         backgroundColor: Colors.white,
         elevation: 0,
-        automaticallyImplyLeading: false,
+        // automaticallyImplyLeading: false,
       ),
       body: _isLoading
           ? const Center(
-              child: CircularProgressIndicator(color: AppTheme.primary))
+              child: CircularProgressIndicator(
+                  color: AppTheme.primary))
           : _errorMessage != null
               ? _buildErrorWidget()
               : RefreshIndicator(
                   onRefresh: _loadUserProfile,
                   color: AppTheme.primary,
                   child: SingleChildScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(),
+                    physics:
+                        const AlwaysScrollableScrollPhysics(),
                     child: Column(
                       children: [
                         _buildProfileHeader(),
@@ -160,6 +189,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  // ═══════════════════════════════════════════
+  //  ERROR WIDGET
+  // ═══════════════════════════════════════════
   Widget _buildErrorWidget() {
     return Center(
       child: Padding(
@@ -172,8 +204,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               decoration: BoxDecoration(
                   color: AppTheme.error.withOpacity(0.1),
                   shape: BoxShape.circle),
-              child:
-                  Icon(Icons.error_outline, size: 64, color: AppTheme.error),
+              child: Icon(Icons.error_outline,
+                  size: 64, color: AppTheme.error),
             ),
             const SizedBox(height: 16),
             const Text('Failed to load profile',
@@ -184,8 +216,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SizedBox(height: 8),
             Text(_errorMessage ?? 'Unknown error',
                 textAlign: TextAlign.center,
-                style:
-                    TextStyle(fontSize: 14, color: AppTheme.textSecondary)),
+                style: TextStyle(
+                    fontSize: 14,
+                    color: AppTheme.textSecondary)),
             const SizedBox(height: 24),
             ElevatedButton.icon(
               onPressed: _loadUserProfile,
@@ -197,7 +230,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   padding: const EdgeInsets.symmetric(
                       horizontal: 24, vertical: 12),
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12))),
+                      borderRadius:
+                          BorderRadius.circular(12))),
             ),
           ],
         ),
@@ -205,6 +239,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  // ═══════════════════════════════════════════
+  //  PROFILE HEADER
+  // ═══════════════════════════════════════════
   Widget _buildProfileHeader() {
     return Container(
       width: double.infinity,
@@ -212,7 +249,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       decoration: const BoxDecoration(color: Colors.white),
       child: Column(
         children: [
-          // Avatar
           Stack(
             children: [
               Container(
@@ -222,7 +258,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   color: AppTheme.primary.withOpacity(0.1),
                   shape: BoxShape.circle,
                   border: Border.all(
-                      color: AppTheme.primary.withOpacity(0.3), width: 2),
+                      color: AppTheme.primary.withOpacity(0.3),
+                      width: 2),
                 ),
                 child: Center(
                   child: Text(
@@ -236,7 +273,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                 ),
               ),
-              // Edit badge
               Positioned(
                 bottom: 0,
                 right: 0,
@@ -245,7 +281,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     final result = await Navigator.push(
                       context,
                       MaterialPageRoute(
-                          builder: (context) => const EditProfileScreen()),
+                          builder: (context) =>
+                              const EditProfileScreen()),
                     );
                     if (result == true) _loadUserProfile();
                   },
@@ -254,8 +291,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     decoration: BoxDecoration(
                       color: AppTheme.primary,
                       shape: BoxShape.circle,
-                      border:
-                          Border.all(color: Colors.white, width: 2),
+                      border: Border.all(
+                          color: Colors.white, width: 2),
                     ),
                     child: const Icon(Icons.edit,
                         color: Colors.white, size: 14),
@@ -273,16 +310,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
           const SizedBox(height: 4),
           Text(_user!.email,
               style: TextStyle(
-                  fontSize: 14, color: AppTheme.textSecondary)),
+                  fontSize: 14,
+                  color: AppTheme.textSecondary)),
           const SizedBox(height: 2),
           Text(_user!.phone,
               style: TextStyle(
-                  fontSize: 14, color: AppTheme.textSecondary)),
+                  fontSize: 14,
+                  color: AppTheme.textSecondary)),
           if (_user!.role != null) ...[
             const SizedBox(height: 10),
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 14, vertical: 5),
               decoration: BoxDecoration(
                 color: AppTheme.primary.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(12),
@@ -299,6 +338,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  // ═══════════════════════════════════════════
+  //  MENU SECTION
+  // ═══════════════════════════════════════════
   Widget _buildMenuSection() {
     return Container(
       color: Colors.white,
@@ -315,20 +357,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
               final result = await Navigator.push(
                 context,
                 MaterialPageRoute(
-                    builder: (context) => const EditProfileScreen()),
+                    builder: (context) =>
+                        const EditProfileScreen()),
               );
               if (result == true) _loadUserProfile();
             },
           ),
-          Divider(color: AppTheme.border, height: 1, indent: 72),
+          Divider(
+              color: AppTheme.border, height: 1, indent: 72),
           _buildMenuItem(
             icon: Icons.receipt_long_outlined,
             iconColor: Colors.orange,
             title: 'My Orders',
             subtitle: 'View your order history',
-            onTap: () => Navigator.pushNamed(context, '/orders'),
+            onTap: () =>
+                Navigator.pushNamed(context, '/orders'),
           ),
-          Divider(color: AppTheme.border, height: 1, indent: 72),
+          Divider(
+              color: AppTheme.border, height: 1, indent: 72),
           _buildMenuItem(
             icon: Icons.location_on_outlined,
             iconColor: Colors.red,
@@ -337,22 +383,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(
-                  builder: (context) => const AddressListScreen()),
+                  builder: (context) =>
+                      const AddressListScreen()),
             ),
           ),
-          Divider(color: AppTheme.border, height: 1, indent: 72),
+          Divider(
+              color: AppTheme.border, height: 1, indent: 72),
           _buildMenuItem(
             icon: Icons.favorite_outline,
             iconColor: Colors.pink,
             title: 'Favorites',
             subtitle: 'Your favorite restaurants',
-            onTap: () => Navigator.pushNamed(context, '/favorites'),
+            onTap: () =>
+                Navigator.pushNamed(context, '/favorites'),
           ),
         ],
       ),
     );
   }
 
+  // ═══════════════════════════════════════════
+  //  SETTINGS SECTION
+  // ═══════════════════════════════════════════
   Widget _buildSettingsSection() {
     return Container(
       color: Colors.white,
@@ -360,8 +412,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildSectionHeader('SETTINGS'),
-
-          //  Change Password 
           _buildMenuItem(
             icon: Icons.lock_outline,
             iconColor: Colors.purple,
@@ -370,12 +420,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(
-                  builder: (context) => const ChangePasswordScreen()),
+                  builder: (context) =>
+                      const ChangePasswordScreen()),
             ),
           ),
-          Divider(color: AppTheme.border, height: 1, indent: 72),
-
-          //  Notifications 
+          Divider(
+              color: AppTheme.border, height: 1, indent: 72),
           _buildMenuItem(
             icon: Icons.notifications_none,
             iconColor: Colors.amber,
@@ -384,12 +434,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(
-                  builder: (context) => const NotificationsScreen()),
+                  builder: (context) =>
+                      const NotificationsScreen()),
             ),
           ),
-          Divider(color: AppTheme.border, height: 1, indent: 72),
-
-          // Help & Support
+          Divider(
+              color: AppTheme.border, height: 1, indent: 72),
           _buildMenuItem(
             icon: Icons.help_outline,
             iconColor: Colors.teal,
@@ -397,9 +447,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             subtitle: 'Get help with your orders',
             onTap: () => _showComingSoon('Help & Support'),
           ),
-          Divider(color: AppTheme.border, height: 1, indent: 72),
-
-          // About 
+          Divider(
+              color: AppTheme.border, height: 1, indent: 72),
           _buildMenuItem(
             icon: Icons.info_outline,
             iconColor: Colors.blueGrey,
@@ -416,17 +465,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  // ═══════════════════════════════════════════
+  //  HELPERS
+  // ═══════════════════════════════════════════
   Widget _buildSectionHeader(String title) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
-      child: Text(
-        title,
-        style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
-            color: AppTheme.textSecondary,
-            letterSpacing: 1.0),
-      ),
+      child: Text(title,
+          style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: AppTheme.textSecondary,
+              letterSpacing: 1.0)),
     );
   }
 
@@ -434,8 +484,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text('$feature — Coming soon!'),
       behavior: SnackBarBehavior.floating,
-      shape:
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10)),
     ));
   }
 
@@ -460,7 +510,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               SizedBox(width: 8),
               Text('Logout',
                   style: TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.w600)),
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600)),
             ],
           ),
         ),
@@ -494,9 +545,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
               fontWeight: FontWeight.w600,
               color: AppTheme.textPrimary)),
       subtitle: Text(subtitle,
-          style:
-              TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
-      trailing: Icon(Icons.chevron_right, color: AppTheme.textLight),
+          style: TextStyle(
+              fontSize: 12, color: AppTheme.textSecondary)),
+      trailing:
+          Icon(Icons.chevron_right, color: AppTheme.textLight),
     );
   }
 }
